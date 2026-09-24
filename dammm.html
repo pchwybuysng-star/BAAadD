@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจำลองโครงสร้างผลึก 3 มิติ (Crystal Structure Viewer)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+        
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            flex: 1;
+            height: 100%;
+            position: relative;
+        }
+        
+        #sidebar {
+            width: 380px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid #334155;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        h2 {
+            font-size: 1.3rem;
+            color: #38bdf8;
+            border-bottom: 2px solid #38bdf8;
+            padding-bottom: 8px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        select,
+        button {
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #1e293b;
+            color: #f8fafc;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        select:hover,
+        button:hover {
+            background: #334155;
+            border-color: #38bdf8;
+        }
+        
+        .btn-active {
+            background: #0284c7 !important;
+            border-color: #38bdf8 !important;
+        }
+        
+        .info-card {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 14px;
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .info-label {
+            color: #94a3b8;
+        }
+        
+        .info-value {
+            color: #38bdf8;
+            font-weight: bold;
+        }
+        
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .hint {
+            font-size: 0.8rem;
+            color: #64748b;
+            line-height: 1.4;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+
+<body>
+    <div id="canvas-container"></div>
+
+    <div id="sidebar">
+        <h2>แบบจำลองผลึก (Interactive)</h2>
+
+        <div class="control-group">
+            <label>เลือกโครงสร้างผลึก</label>
+            <select id="structureSelect">
+        <optgroup label="โลหะ (Metallic Unit Cells)">
+          <option value="sc">Simple Cubic (SC)</option>
+          <option value="bcc">Body-Centred Cubic (BCC)</option>
+          <option value="fcc" selected>Face-Centred Cubic (FCC)</option>
+        </optgroup>
+        <optgroup label="สารประกอบไอออนิก (Ionic Crystals)">
+          <option value="nacl">Rock Salt (NaCl)</option>
+          <option value="cscl">Cesium Chloride (CsCl)</option>
+          <option value="zns">Zinc Blende (ZnS)</option>
+          <option value="caf2">Fluorite (CaF₂)</option>
+        </optgroup>
+      </select>
+        </div>
+
+        <div class="control-group">
+            <label>รูปแบบการแสดงผล</label>
+            <button id="toggleRadiusBtn">สลับขนาดอะตอม (Ball-and-Stick / ขยายเต็ม)</button>
+        </div>
+
+        <div class="info-card">
+            <div class="info-row"><span class="info-label">สูตร/ชนิด:</span><span id="cardName" class="info-value">FCC</span></div>
+            <div class="info-row"><span class="info-label">จำนวนอนุภาคในเซลล์ (n):</span><span id="cardN" class="info-value">4</span></div>
+            <div class="info-row"><span class="info-label">เลขโคออร์ดิเนชัน (CN):</span><span id="cardCN" class="info-value">12</span></div>
+            <div class="info-row"><span class="info-label">Packing Efficiency:</span><span id="cardPE" class="info-value">74.08%</span></div>
+            <div class="info-row"><span class="info-label">เปอร์เซ็นต์ช่องว่าง:</span><span id="cardVoid" class="info-value">25.92%</span></div>
+        </div>
+
+        <div class="control-group">
+            <label>คำอธิบายตำแหน่งอะตอม</label>
+            <p id="descText" style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;"></p>
+        </div>
+
+        <div class="legend">
+            <label>สัญลักษณ์สี</label>
+            <div id="legendItems"></div>
+        </div>
+
+        <div class="hint">
+            * <b>วิธีใช้งาน:</b> คลิกเมาส์ซ้ายค้างแล้วลากเพื่อหมุน 360°, กลิ้งลูกกลิ้งเพื่อซูมเข้า-ออก, คลิกขวาค้างเพื่อเลื่อนแกน
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x090d16);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(2.4, 2.0, 3.2);
+
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true
+        });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // ระบบแสงสว่าง
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+        const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight1.position.set(5, 10, 7);
+        scene.add(dirLight1);
+        const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.3);
+        dirLight2.position.set(-5, -5, -5);
+        scene.add(dirLight2);
+
+        // กรอบยูนิตเซลล์ (Cube Wireframe)
+        const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+        const boxEdges = new THREE.EdgesGeometry(boxGeo);
+        const boxLine = new THREE.LineSegments(boxEdges, new THREE.LineBasicMaterial({
+            color: 0x64748b,
+            linewidth: 2
+        }));
+        scene.add(boxLine);
+
+        const crystalGroup = new THREE.Group();
+        scene.add(crystalGroup);
+
+        let isExpanded = false;
+
+        // ฐานข้อมูลโครงสร้าง
+        const structures = {
+            sc: {
+                name: "Simple Cubic (SC)",
+                n: "1 อะตอม",
+                cn: "6",
+                pe: "52.38%",
+                void: "47.62%",
+                desc: "อะตอมอยู่ที่มุมทั้ง 8 มุมเท่านั้น (8 × 1/8 = 1 อะตอม) จัดเรียงหลวมที่สุด",
+                legend: [{
+                    name: "อะตอมโลหะ",
+                    color: "#38bdf8"
+                }],
+                create: (scale) => {
+                    const r = scale ? 0.5 : 0.14;
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: 0x38bdf8,
+                        roughness: 0.3,
+                        metalness: 0.5
+                    });
+                    const corners = [-0.5, 0.5];
+                    corners.forEach(x => corners.forEach(y => corners.forEach(z => {
+                        addSphere(x, y, z, r, mat);
+                    })));
+                }
+            },
+            bcc: {
+                name: "Body-Centred Cubic (BCC)",
+                n: "2 อะตอม",
+                cn: "8",
+                pe: "68.04%",
+                void: "31.96%",
+                desc: "มุมทั้ง 8 มุม (นับเป็น 1) และมีอีก 1 อะตอมอยู่ตรงใจกลางลูกบาศก์พอดี เช่น Na, K, Fe",
+                legend: [{
+                    name: "อะตอมที่มุม",
+                    color: "#38bdf8"
+                }, {
+                    name: "อะตอมใจกลางเซลล์",
+                    color: "#f59e0b"
+                }],
+                create: (scale) => {
+                    const r = scale ? 0.433 : 0.14;
+                    const matCorner = new THREE.MeshStandardMaterial({
+                        color: 0x38bdf8,
+                        roughness: 0.3,
+                        metalness: 0.5
+                    });
+                    const matCenter = new THREE.MeshStandardMaterial({
+                        color: 0xf59e0b,
+                        roughness: 0.3,
+                        metalness: 0.5
+                    });
+                    const c = [-0.5, 0.5];
+                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, r, matCorner))));
+                    addSphere(0, 0, 0, r, matCenter);
+                }
+            },
+            fcc: {
+                name: "Face-Centred Cubic (FCC)",
+                n: "4 อะตอม",
+                cn: "12",
+                pe: "74.08%",
+                void: "25.92%",
+                desc: "มุมทั้ง 8 มุม (1 อะตอม) + กลางผิวหน้าทั้ง 6 หน้า (3 อะตอม) เป็นการจัดเรียงชิดที่สุด (Closest Packing) เช่น Cu, Ag, Au",
+                legend: [{
+                    name: "อะตอมที่มุม",
+                    color: "#38bdf8"
+                }, {
+                    name: "อะตอมที่ผิวหน้า",
+                    color: "#ec4899"
+                }],
+                create: (scale) => {
+                    const r = scale ? 0.353 : 0.13;
+                    const matCorner = new THREE.MeshStandardMaterial({
+                        color: 0x38bdf8,
+                        roughness: 0.3,
+                        metalness: 0.5
+                    });
+                    const matFace = new THREE.MeshStandardMaterial({
+                        color: 0xec4899,
+                        roughness: 0.3,
+                        metalness: 0.5
+                    });
+                    const c = [-0.5, 0.5];
+                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, r, matCorner))));
+                    const faces = [
+                        [0, 0, 0.5],
+                        [0, 0, -0.5],
+                        [0, 0.5, 0],
+                        [0, -0.5, 0],
+                        [0.5, 0, 0],
+                        [-0.5, 0, 0]
+                    ];
+                    faces.forEach(p => addSphere(p[0], p[1], p[2], r, matFace));
+                }
+            },
+            nacl: {
+                name: "Rock Salt (NaCl)",
+                n: "4 สูตรหน่วย (4 Na⁺, 4 Cl⁻)",
+                cn: "6 : 6",
+                pe: "ขึ้นกับชนิดไอออน",
+                void: "-",
+                desc: "Cl⁻ จัดตัวแบบ FCC ส่วน Na⁺ ขนาดเล็กกว่าแทรกอยู่ในช่องออกตะฮีดรัล (Octahedral) ทุกช่อง (ขอบ 12 ด้าน + กลางเซลล์ 1 จุด)",
+                legend: [{
+                    name: "Cl⁻ (ไอออนลบ - FCC)",
+                    color: "#22c55e"
+                }, {
+                    name: "Na⁺ (ไอออนบวก - Octahedral)",
+                    color: "#a855f7"
+                }],
+                create: (scale) => {
+                    const rCl = scale ? 0.28 : 0.13;
+                    const rNa = scale ? 0.16 : 0.08;
+                    const matCl = new THREE.MeshStandardMaterial({
+                        color: 0x22c55e,
+                        roughness: 0.3
+                    });
+                    const matNa = new THREE.MeshStandardMaterial({
+                        color: 0xa855f7,
+                        roughness: 0.3
+                    });
+                    const c = [-0.5, 0.5];
+                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, rCl, matCl))));
+                    [
+                        [0, 0, 0.5],
+                        [0, 0, -0.5],
+                        [0, 0.5, 0],
+                        [0, -0.5, 0],
+                        [0.5, 0, 0],
+                        [-0.5, 0, 0]
+                    ].forEach(p => addSphere(p[0], p[1], p[2], rCl, matCl));
+                    addSphere(0, 0, 0, rNa, matNa);
+                    const edges = [
+                        [0.5, 0.5, 0],
+                        [-0.5, 0.5, 0],
+                        [0.5, -0.5, 0],
+                        [-0.5, -0.5, 0],
+                        [0.5, 0, 0.5],
+                        [-0.5, 0, 0.5],
+                        [0.5, 0, -0.5],
+                        [-0.5, 0, -0.5],
+                        [0, 0.5, 0.5],
+                        [0, -0.5, 0.5],
+                        [0, 0.5, -0.5],
+                        [0, -0.5, -0.5]
+                    ];
+                    edges.forEach(p => addSphere(p[0], p[1], p[2], rNa, matNa));
+                }
+            },
+            cscl: {
+                name: "Cesium Chloride (CsCl)",
+                n: "1 สูตรหน่วย (1 Cs⁺, 1 Cl⁻)",
+                cn: "8 : 8",
+                pe: "จัดแบบลูกบาศก์",
+                void: "-",
+                desc: "Cl⁻ จัดแบบ Simple Cubic โดยมี Cs⁺ ขนาดใหญ่อยู่ตรงกลางยูนิตเซลล์พอดี (Cubic Hole)",
+                legend: [{
+                    name: "Cl⁻ (มุม 8 จุด)",
+                    color: "#22c55e"
+                }, {
+                    name: "Cs⁺ (กลางยูนิตเซลล์)",
+                    color: "#e11d48"
+                }],
+                create: (scale) => {
+                    const rCl = scale ? 0.32 : 0.13;
+                    const rCs = scale ? 0.30 : 0.12;
+                    const matCl = new THREE.MeshStandardMaterial({
+                        color: 0x22c55e
+                    });
+                    const matCs = new THREE.MeshStandardMaterial({
+                        color: 0xe11d48
+                    });
+                    const c = [-0.5, 0.5];
+                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, rCl, matCl))));
+                    addSphere(0, 0, 0, rCs, matCs);
+                }
+            },
+            zns: {
+                name: "Zinc Blende (ZnS)",
+                n: "4 สูตรหน่วย (4 Zn²⁺, 4 S²⁻)",
+                cn: "4 : 4",
+                pe: "เตตระฮีดรัล",
+                void: "-",
+                desc: "S²⁻ จัดแบบ FCC ส่วน Zn²⁺ เข้าไปอยู่เฉพาะในช่องเททระฮีดรัล (Tetrahedral holes) แบบ 'ช่องเว้นช่อง' (4 จาก 8 ช่อง)",
+                legend: [{
+                    name: "S²⁻ (FCC)",
+                    color: "#eab308"
+                }, {
+                    name: "Zn²⁺ (Tetrahedral ครึ่งเดียว)",
+                    color: "#06b6d4"
+                }],
+                create: (scale) => {
+                    const rS = scale ? 0.28 : 0.13;
+                    const rZn = scale ? 0.14 : 0.08;
+                    const matS = new THREE.MeshStandardMaterial({
+                        color: 0xeab308
+                    });
+                    const matZn = new THREE.MeshStandardMaterial({
+                        color: 0x06b6d4
+                    });
+                    const c = [-0.5, 0.5];
+                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, rS, matS))));
+                    [
+                        [0, 0, 0.5],
+                        [0, 0, -0.5],
+                        [0, 0.5, 0],
+                        [0, -0.5, 0],
+                        [0.5, 0, 0],
+                        [-0.5, 0, 0]
+                    ].forEach(p => addSphere(p[0], p[1], p[2], rS, matS));
+                    const tHoles = [
+                        [0.25, 0.25, 0.25],
+                        [-0.25, -0.25, 0.25],
+                        [-0.25, 0.25, -0.25],
+                        [0.25, -0.25, -0.25]
+                    ];
+                    tHoles.forEach(p => addSphere(p[0], p[1], p[2], rZn, matZn));
+                }
+            },
+            caf2: {
+                name: "Fluorite (CaF₂)",
+                n: "4 Ca²⁺, 8 F⁻ (สูตร CaF₂)",
+                cn: "8 : 4",
+                pe: "เตตระฮีดรัลเต็ม",
+                void: "-",
+                desc: "Ca²⁺ จัดแบบ FCC ส่วน F⁻ เข้าไปบรรจุในช่องเททระฮีดรัล 'ครบทั้ง 8 ช่อง' ภายในเซลล์",
+                legend: [{
+                    name: "Ca²⁺ (FCC)",
+                    color: "#6366f1"
+                }, {
+                    name: "F⁻ (Tetrahedral ทั้ง 8 ช่อง)",
+                    color: "#14b8a6"
+                }],
+                create: (scale) => {
+                    const rCa = scale ? 0.26 : 0.13;
+                    const rF = scale ? 0.14 : 0.08;
+                    const matCa = new THREE.MeshStandardMaterial({
+                        color: 0x6366f1
+                    });
+                    const matF = new THREE.MeshStandardMaterial({
+                        color: 0x14b8a6
+                    });
+                    const c = [-0.5, 0.5];
+                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, rCa, matCa))));
+                    [
+                        [0, 0, 0.5],
+                        [0, 0, -0.5],
+                        [0, 0.5, 0],
+                        [0, -0.5, 0],
+                        [0.5, 0, 0],
+                        [-0.5, 0, 0]
+                    ].forEach(p => addSphere(p[0], p[1], p[2], rCa, matCa));
+                    const tHoles = [
+                        [0.25, 0.25, 0.25],
+                        [0.25, 0.25, -0.25],
+                        [0.25, -0.25, 0.25],
+                        [0.25, -0.25, -0.25],
+                        [-0.25, 0.25, 0.25],
+                        [-0.25, 0.25, -0.25],
+                        [-0.25, -0.25, 0.25],
+                        [-0.25, -0.25, -0.25]
+                    ];
+                    tHoles.forEach(p => addSphere(p[0], p[1], p[2], rF, matF));
+                }
+            }
+        };
+
+        function addSphere(x, y, z, radius, material) {
+            const geo = new THREE.SphereGeometry(radius, 24, 24);
+            const mesh = new THREE.Mesh(geo, material);
+            mesh.position.set(x, y, z);
+            crystalGroup.add(mesh);
+        }
+
+        function renderStructure(key) {
+            while (crystalGroup.children.length > 0) {
+                crystalGroup.remove(crystalGroup.children[0]);
+            }
+            const data = structures[key];
+            data.create(isExpanded);
+
+            document.getElementById('cardName').textContent = data.name;
+            document.getElementById('cardN').textContent = data.n;
+            document.getElementById('cardCN').textContent = data.cn;
+            document.getElementById('cardPE').textContent = data.pe;
+            document.getElementById('cardVoid').textContent = data.void;
+            document.getElementById('descText').textContent = data.desc;
+
+            const legendBox = document.getElementById('legendItems');
+            legendBox.innerHTML = '';
+            data.legend.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'legend-item';
+                div.innerHTML = `<span class="color-dot" style="background:${item.color}"></span><span>${item.name}</span>`;
+                legendBox.appendChild(div);
+            });
+        }
+
+        document.getElementById('structureSelect').addEventListener('change', (e) => {
+            renderStructure(e.target.value);
+        });
+
+        document.getElementById('toggleRadiusBtn').addEventListener('click', () => {
+            isExpanded = !isExpanded;
+            renderStructure(document.getElementById('structureSelect').value);
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // เริ่มต้นแสดง FCC
+        renderStructure('fcc');
+        animate();
+    </script>
+</body>
+
+</html>
