@@ -4,555 +4,2038 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบจำลองโครงสร้างผลึก 3 มิติ (Crystal Structure Viewer)</title>
+    <title>ระบบจำลองโครงสร้างผลึกและแลปเรียงลูกปิงปอง 3 มิติ (Crystal Structure & Ping-Pong Packing 3D Simulator)</title>
     <style>
+        :root {
+            --bg-main: #090d16;
+            --bg-panel: rgba(15, 23, 42, 0.94);
+            --bg-card: rgba(30, 41, 59, 0.85);
+            --border-color: #334155;
+            --accent-cyan: #38bdf8;
+            --accent-amber: #f59e0b;
+            --accent-emerald: #10b981;
+            --accent-pink: #ec4899;
+            --accent-purple: #c084fc;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Kanit', Prompt, sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
         }
-        
+
         body {
-            background-color: #0f172a;
-            color: #f8fafc;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
             overflow: hidden;
             display: flex;
             height: 100vh;
+            width: 100vw;
         }
-        
+
         #canvas-container {
             flex: 1;
             height: 100%;
             position: relative;
+            outline: none;
         }
-        
+
+        /* Sidebar Styling */
         #sidebar {
-            width: 380px;
-            background: rgba(30, 41, 59, 0.95);
-            backdrop-filter: blur(10px);
-            border-left: 1px solid #334155;
-            padding: 20px;
+            width: 440px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(16px);
+            border-left: 1px solid var(--border-color);
+            padding: 20px 22px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 16px;
+            z-index: 10;
+            box-shadow: -6px 0 25px rgba(0, 0, 0, 0.5);
         }
-        
-        h2 {
-            font-size: 1.3rem;
-            color: #38bdf8;
-            border-bottom: 2px solid #38bdf8;
-            padding-bottom: 8px;
+
+        #sidebar::-webkit-scrollbar {
+            width: 6px;
         }
-        
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        label {
-            font-size: 0.85rem;
-            color: #94a3b8;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        select,
-        button {
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid #475569;
-            background: #1e293b;
-            color: #f8fafc;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        select:hover,
-        button:hover {
+
+        #sidebar::-webkit-scrollbar-thumb {
             background: #334155;
-            border-color: #38bdf8;
+            border-radius: 4px;
         }
-        
-        .btn-active {
-            background: #0284c7 !important;
-            border-color: #38bdf8 !important;
-        }
-        
-        .info-card {
-            background: #0f172a;
-            border-radius: 8px;
-            padding: 14px;
-            border: 1px solid #334155;
+
+        .header-title {
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            font-size: 0.9rem;
+            gap: 4px;
+            border-bottom: 2px solid var(--accent-cyan);
+            padding-bottom: 10px;
         }
-        
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .info-label {
-            color: #94a3b8;
-        }
-        
-        .info-value {
-            color: #38bdf8;
-            font-weight: bold;
-        }
-        
-        .legend {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            font-size: 0.85rem;
-        }
-        
-        .legend-item {
+
+        .header-title h1 {
+            font-size: 1.25rem;
+            color: var(--accent-cyan);
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        
+
+        .header-title p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            background: #1e293b;
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 8px 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            background: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+        }
+
+        /* Control Groups */
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        .group-title {
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        label {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        select,
+        button {
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: #1e293b;
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        select:hover,
+        button:hover {
+            background: #334155;
+            border-color: var(--accent-cyan);
+        }
+
+        .btn-primary {
+            background: #0284c7;
+            border-color: #38bdf8;
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: #0369a1;
+        }
+
+        .btn-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .btn-toggle-active {
+            background: #0284c7 !important;
+            border-color: #38bdf8 !important;
+            color: white !important;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+        }
+
+        /* Sliders */
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent-cyan);
+            height: 6px;
+            border-radius: 3px;
+            background: #334155;
+            cursor: pointer;
+        }
+
+        .slider-val {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            width: 38px;
+            text-align: right;
+        }
+
+        /* Checkbox Rows */
+        .check-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 7px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+        }
+
+        .check-item input[type="checkbox"] {
+            accent-color: var(--accent-cyan);
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+        }
+
+        /* Info Card */
+        .info-card {
+            background: #0a0f1d;
+            border-radius: 10px;
+            padding: 14px;
+            border: 1px solid #1e293b;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.86rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+        }
+
+        .info-value {
+            color: var(--accent-cyan);
+            font-weight: 700;
+            text-align: right;
+        }
+
+        /* Explanation Box */
+        .explain-box {
+            background: rgba(30, 41, 59, 0.5);
+            border-left: 3px solid var(--accent-cyan);
+            padding: 10px 12px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.84rem;
+            color: #cbd5e1;
+            line-height: 1.55;
+        }
+
+        .explain-box b {
+            color: #38bdf8;
+        }
+
+        .explain-box .highlight-t {
+            color: #d946ef;
+            font-weight: bold;
+        }
+
+        .explain-box .highlight-o {
+            color: #fb923c;
+            font-weight: bold;
+        }
+
+        /* Legend */
+        .legend-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.82rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+        }
+
         .color-dot {
             width: 14px;
             height: 14px;
             border-radius: 50%;
             display: inline-block;
+            box-shadow: 0 0 6px currentColor;
         }
-        
-        .hint {
+
+        /* Canvas Floating Overlays */
+        #viewport-controls {
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            display: flex;
+            gap: 8px;
+            z-index: 5;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 6px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(8px);
+        }
+
+        .view-btn {
+            background: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            padding: 6px 12px;
             font-size: 0.8rem;
-            color: #64748b;
-            line-height: 1.4;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
+
+        .view-btn:hover {
+            background: #0284c7;
+            border-color: #38bdf8;
+        }
+
+        .view-btn.active {
+            background: #0284c7;
+            border-color: #38bdf8;
+        }
+
+        /* Floating Notification Pill */
+        #mode-badge {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            color: var(--accent-cyan);
+            backdrop-filter: blur(8px);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Modal for Lab Cheat Sheet */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #0f172a;
+            border: 1px solid #38bdf8;
+            border-radius: 14px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 24px 28px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 12px;
+        }
+
+        .modal-header h2 {
+            color: #38bdf8;
+            font-size: 1.3rem;
+        }
+
+        .close-btn {
+            background: #1e293b;
+            border: 1px solid #475569;
+            color: white;
+            font-size: 1.2rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .lab-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.86rem;
+            margin-top: 8px;
+        }
+
+        .lab-table th,
+        .lab-table td {
+            border: 1px solid #334155;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .lab-table th {
+            background: #1e293b;
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
+        .lab-table tr:nth-child(even) {
+            background: rgba(30, 41, 59, 0.4);
+        }
+
+        .qa-card {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 14px;
+            border-left: 4px solid #38bdf8;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.88rem;
+        }
+
+        .qa-card h4 {
+            color: #f59e0b;
+        }
+
+        .badge-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: bold;
+        }
+        .badge-t { background: rgba(217, 70, 239, 0.2); color: #d946ef; border: 1px solid #d946ef; }
+        .badge-o { background: rgba(251, 146, 60, 0.2); color: #fb923c; border: 1px solid #fb923c; }
     </style>
+    <!-- Three.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 
 <body>
-    <div id="canvas-container"></div>
-
-    <div id="sidebar">
-        <h2>แบบจำลองผลึก (Interactive)</h2>
-
-        <div class="control-group">
-            <label>เลือกโครงสร้างผลึก</label>
-            <select id="structureSelect">
-        <optgroup label="โลหะ (Metallic Unit Cells)">
-          <option value="sc">Simple Cubic (SC)</option>
-          <option value="bcc">Body-Centred Cubic (BCC)</option>
-          <option value="fcc" selected>Face-Centred Cubic (FCC)</option>
-        </optgroup>
-        <optgroup label="สารประกอบไอออนิก (Ionic Crystals)">
-          <option value="nacl">Rock Salt (NaCl)</option>
-          <option value="cscl">Cesium Chloride (CsCl)</option>
-          <option value="zns">Zinc Blende (ZnS)</option>
-          <option value="caf2">Fluorite (CaF₂)</option>
-        </optgroup>
-      </select>
+    <!-- 3D Viewport -->
+    <div id="canvas-container">
+        <!-- Camera Controls -->
+        <div id="viewport-controls">
+            <button class="view-btn" id="btnViewTop" title="มองจากด้านบนตรงเพื่อดูการเรียงตัวของชั้นตามแลปหน้า 16">🎯 Top View (2D)</button>
+            <button class="view-btn" id="btnViewSide" title="มองจากด้านข้างเพื่อดูลำดับชั้น A-B-A หรือ A-B-C">📐 Side View</button>
+            <button class="view-btn active" id="btnView3D" title="มุมมอง 3 มิติ หมุนอิสระ">🔄 3D Perspective</button>
+            <button class="view-btn" id="btnAutoRotate" title="เปิด/ปิดการหมุนช้าๆ อัตโนมัติ">⏸ Auto-Rotate</button>
+            <button class="view-btn" id="btnResetView" title="รีเซ็ตตำแหน่งกล้อง">🔍 Reset</button>
         </div>
 
-        <div class="control-group">
-            <label>รูปแบบการแสดงผล</label>
-            <button id="toggleRadiusBtn">สลับขนาดอะตอม (Ball-and-Stick / ขยายเต็ม)</button>
-        </div>
-
-        <div class="info-card">
-            <div class="info-row"><span class="info-label">สูตร/ชนิด:</span><span id="cardName" class="info-value">FCC</span></div>
-            <div class="info-row"><span class="info-label">จำนวนอนุภาคในเซลล์ (n):</span><span id="cardN" class="info-value">4</span></div>
-            <div class="info-row"><span class="info-label">เลขโคออร์ดิเนชัน (CN):</span><span id="cardCN" class="info-value">12</span></div>
-            <div class="info-row"><span class="info-label">Packing Efficiency:</span><span id="cardPE" class="info-value">74.08%</span></div>
-            <div class="info-row"><span class="info-label">เปอร์เซ็นต์ช่องว่าง:</span><span id="cardVoid" class="info-value">25.92%</span></div>
-        </div>
-
-        <div class="control-group">
-            <label>คำอธิบายตำแหน่งอะตอม</label>
-            <p id="descText" style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;"></p>
-        </div>
-
-        <div class="legend">
-            <label>สัญลักษณ์สี</label>
-            <div id="legendItems"></div>
-        </div>
-
-        <div class="hint">
-            * <b>วิธีใช้งาน:</b> คลิกเมาส์ซ้ายค้างแล้วลากเพื่อหมุน 360°, กลิ้งลูกกลิ้งเพื่อซูมเข้า-ออก, คลิกขวาค้างเพื่อเลื่อนแกน
+        <div id="mode-badge">
+            <span style="font-size: 1.1rem;">🏓</span>
+            <span id="badgeText">โหมด: เรียงลูกปิงปอง 3 ชั้น (AB vs ABC)</span>
         </div>
     </div>
 
+    <!-- Interactive Sidebar -->
+    <div id="sidebar">
+        <div class="header-title">
+            <h1>🧪 Crystal Lab Simulator</h1>
+            <p>แบบจำลอง 3D แลปโครงสร้างผลึก & เรียงลูกปิงปอง (AB / ABC / Holes)</p>
+        </div>
+
+        <!-- Tab Selector -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="pingpong">🏓 เรียงปิงปอง</button>
+            <button class="tab-btn" data-tab="holes">🕳️ ชนิดช่องว่าง</button>
+            <button class="tab-btn" data-tab="unitcells">🧊 ยูนิตเซลล์</button>
+            <button class="tab-btn" data-tab="ionic">💎 สารไอออนิก</button>
+        </div>
+
+        <!-- ================= PANEL 1: PING-PONG PACKING ================= -->
+        <div id="panel-pingpong" class="panel-section">
+            <div class="control-group">
+                <div class="group-title">
+                    <span>ลำดับการเรียงชั้น (Stacking Order)</span>
+                    <span class="badge-pill" style="background:#0284c7; color:#fff;">ตอนที่ 1 ข.</span>
+                </div>
+                <div class="btn-row">
+                    <button id="btnHCP" class="btn-toggle-active">HCP (ABAB...)</button>
+                    <button id="btnFCC">FCC (ABCABC...)</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="group-title">
+                    <span>รูปแบบแพลูกปิงปอง</span>
+                </div>
+                <select id="pingpongClusterSelect">
+                    <option value="lab">ชุดทดลองตามแลป (รูปที่ 17: ฐาน 19 + หกเหลี่ยม 7 + สามเหลี่ยม 3)</option>
+                    <option value="full">ผลึกหกเหลี่ยมเต็ม (Full Grid: 19 + 12 + 12 ลูก)</option>
+                    <option value="single">เปรียบเทียบชั้นเดียว (1 Layer: Closest vs Simple Cubic)</option>
+                </select>
+            </div>
+
+            <!-- Stacking Layer Controls -->
+            <div class="control-group" id="layerControlsGroup">
+                <div class="group-title">
+                    <span>ชั้นลูกปิงปอง (เปิด/ปิด ทีละชั้น)</span>
+                </div>
+                <div class="check-grid">
+                    <label class="check-item">
+                        <input type="checkbox" id="chkLayerA" checked>
+                        <span style="color:#38bdf8;">● ชั้นที่ 1 (A)</span>
+                    </label>
+                    <label class="check-item">
+                        <input type="checkbox" id="chkLayerB" checked>
+                        <span style="color:#f59e0b;">● ชั้นที่ 2 (B)</span>
+                    </label>
+                    <label class="check-item" style="grid-column: span 2;">
+                        <input type="checkbox" id="chkLayerC" checked>
+                        <span id="labelLayer3" style="color:#10b981;">● ชั้นที่ 3 (A - ทับชั้น 1 พอดี)</span>
+                    </label>
+                </div>
+
+                <div class="slider-container" style="margin-top: 6px;">
+                    <label>
+                        <span>ระยะห่างแยกชั้น (Explode Layers):</span>
+                        <span class="slider-val" id="valLayerSpacing">0%</span>
+                    </label>
+                    <div class="slider-row">
+                        <input type="range" id="sliderLayerSpacing" min="0" max="100" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Holes Highlighter -->
+            <div class="control-group" id="holesToggleGroup">
+                <div class="group-title">
+                    <span>ไฮไลต์ช่องว่างในแพ (Show Holes)</span>
+                </div>
+                <div class="check-grid">
+                    <label class="check-item">
+                        <input type="checkbox" id="chkShowTHoles" checked>
+                        <span style="color:#d946ef;">◆ ช่อง Tetrahedral (T)</span>
+                    </label>
+                    <label class="check-item">
+                        <input type="checkbox" id="chkShowOHoles" checked>
+                        <span style="color:#fb923c;">◆ ช่อง Octahedral (O)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 1 Layer Specific Controls -->
+            <div class="control-group" id="singleLayerGroup" style="display: none;">
+                <div class="group-title">
+                    <span>การจัดเรียงอนุภาค 1 ชั้น (ตอนที่ 1 ก.)</span>
+                </div>
+                <div class="btn-row">
+                    <button id="btn1Closest" class="btn-toggle-active">Closest Packing</button>
+                    <button id="btn1Simple">Simple Cubic</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PANEL 2: HOLES EXPLORER ================= -->
+        <div id="panel-holes" class="panel-section" style="display: none;">
+            <div class="control-group">
+                <div class="group-title">
+                    <span>เจาะลึกชนิดช่องว่าง (Isolated Void)</span>
+                    <span class="badge-pill" style="background:#8b5cf6; color:#fff;">3 รูปร่าง</span>
+                </div>
+                <select id="holeTypeSelect">
+                    <option value="tetra">ช่องเททระฮีดรัล (Tetrahedral Hole - 4 ลูก)</option>
+                    <option value="octa">ช่องออกตะฮีดรัล (Octahedral Hole - 6 ลูก)</option>
+                    <option value="cubic">ช่องลูกบาศก์ (Cubic Hole - 8 ลูก)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <div class="slider-container">
+                    <label>
+                        <span>แยกลูกปิงปองออกจากศูนย์กลาง (Explode Void):</span>
+                        <span class="slider-val" id="valHoleExplode">0%</span>
+                    </label>
+                    <div class="slider-row">
+                        <input type="range" id="sliderHoleExplode" min="0" max="100" value="0">
+                    </div>
+                </div>
+                <div class="check-grid" style="margin-top: 4px;">
+                    <label class="check-item">
+                        <input type="checkbox" id="chkHolePolyhedron" checked>
+                        <span>แสดงโครงร่าง 3D เรขาคณิต</span>
+                    </label>
+                    <label class="check-item">
+                        <input type="checkbox" id="chkHoleCentralSphere" checked>
+                        <span>แสดงก้อนลูกแก้วในช่องว่าง</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PANEL 3: METALLIC UNIT CELLS ================= -->
+        <div id="panel-unitcells" class="panel-section" style="display: none;">
+            <div class="control-group">
+                <div class="group-title">
+                    <span>โลหะ (Metallic Unit Cells)</span>
+                    <span class="badge-pill" style="background:#059669; color:#fff;">ตอนที่ 2</span>
+                </div>
+                <select id="metallicSelect">
+                    <option value="sc">Simple Cubic (SC)</option>
+                    <option value="bcc">Body-Centred Cubic (BCC)</option>
+                    <option value="fcc" selected>Face-Centred Cubic (FCC)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <div class="group-title"><span>รูปแบบการแสดงผล</span></div>
+                <div class="btn-row">
+                    <button id="btnCellBallStick" class="btn-toggle-active">Ball & Stick (โปร่ง)</button>
+                    <button id="btnCellSpaceFill">Space-Filling (เต็ม)</button>
+                </div>
+                <label class="check-item" style="margin-top:4px;">
+                    <input type="checkbox" id="chkShowUnitCellBox" checked>
+                    <span>แสดงกรอบลูกบาศก์ยูนิตเซลล์ (Box)</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- ================= PANEL 4: IONIC CRYSTALS ================= -->
+        <div id="panel-ionic" class="panel-section" style="display: none;">
+            <div class="control-group">
+                <div class="group-title">
+                    <span>สารประกอบไอออนิก (Ionic Compounds)</span>
+                    <span class="badge-pill" style="background:#d97706; color:#fff;">ตอนที่ 3</span>
+                </div>
+                <select id="ionicSelect">
+                    <option value="nacl" selected>Rock Salt (NaCl) - แทรกในช่อง Octahedral</option>
+                    <option value="cscl">Cesium Chloride (CsCl) - แทรกในช่อง Cubic</option>
+                    <option value="zns">Zinc Blende (ZnS) - แทรกใน Tetrahedral สลับช่อง</option>
+                    <option value="caf2">Fluorite (CaF₂) - แทรกใน Tetrahedral ครบ 8 ช่อง</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <div class="group-title"><span>รูปแบบการแสดงผล</span></div>
+                <div class="btn-row">
+                    <button id="btnIonicBallStick" class="btn-toggle-active">Ball & Stick</button>
+                    <button id="btnIonicSpaceFill">Space-Filling</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Common Stats & Explanation Card -->
+        <div class="info-card">
+            <div class="info-row"><span class="info-label">โครงสร้าง/แบบจำลอง:</span><span id="statName" class="info-value">HCP (ABAB...)</span></div>
+            <div class="info-row"><span class="info-label">ลำดับชั้น / ชนิด:</span><span id="statType" class="info-value">Hexagonal Closest Packing</span></div>
+            <div class="info-row"><span class="info-label">เลขโคออร์ดิเนชัน (CN):</span><span id="statCN" class="info-value">12 (6 ในชั้น + 3 บน + 3 ล่าง)</span></div>
+            <div class="info-row"><span class="info-label">Packing Efficiency:</span><span id="statPE" class="info-value">74.08% (ช่องว่าง 25.92%)</span></div>
+            <div class="info-row"><span class="info-label">ชนิดช่องว่างที่เกิด:</span><span id="statHoles" class="info-value">Tetrahedral (8) & Octahedral (6)</span></div>
+        </div>
+
+        <!-- Deep Explanation Box -->
+        <div class="explain-box" id="explainBox">
+            <!-- Dynamic explanation text -->
+        </div>
+
+        <!-- Legend -->
+        <div class="control-group">
+            <div class="group-title"><span>สัญลักษณ์สี (Color Legend)</span></div>
+            <div class="legend-list" id="legendContainer"></div>
+        </div>
+
+        <!-- Lab Cheat Sheet Modal Trigger Button -->
+        <button id="btnOpenCheatSheet" class="btn-primary" style="margin-top: auto; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <span>📖</span>
+            <span>เปิดสรุปเนื้อหาแลป & เฉลยคำถามท้ายแลป</span>
+        </button>
+    </div>
+
+    <!-- ================= LAB CHEAT SHEET MODAL ================= -->
+    <div class="modal-overlay" id="cheatSheetModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📑 สรุปคู่มือแลปโครงสร้างผลึก & เฉลยคำถามท้ายแลป</h2>
+                <button class="close-btn" id="btnCloseCheatSheet">&times;</button>
+            </div>
+
+            <!-- Section 1 -->
+            <div>
+                <h3 style="color:#38bdf8; margin-bottom:8px;">1. ตารางเปรียบเทียบการจัดเรียงอะตอม 1 ชั้น (ตอนที่ 1 ก.)</h3>
+                <table class="lab-table">
+                    <tr>
+                        <th>หัวข้อ</th>
+                        <th>Closest Packing (ชิดที่สุด)</th>
+                        <th>Simple Cubic (ลูกบาศก์อย่างง่าย)</th>
+                    </tr>
+                    <tr>
+                        <td>เลขโคออร์ดิเนชัน 2 มิติ</td>
+                        <td><b>6</b> (ล้อมรอบ 6 ลูก)</td>
+                        <td><b>4</b> (ล้อมรอบ 4 ลูก)</td>
+                    </tr>
+                    <tr>
+                        <td>Packing Efficiency</td>
+                        <td><b>60.48%</b> (คำนวณจาก &pi; / (2&radic;3))</td>
+                        <td><b>52.38%</b> (คำนวณจาก &pi; / 6)</td>
+                    </tr>
+                    <tr>
+                        <td>เปอร์เซ็นต์ช่องว่าง</td>
+                        <td><b>39.52%</b></td>
+                        <td><b>47.62%</b></td>
+                    </tr>
+                    <tr>
+                        <td>ชนิดช่องว่างเมื่อวางชั้นที่ 2</td>
+                        <td>ช่องเททระฮีดรัล และช่องออกตะฮีดรัล</td>
+                        <td>ช่องลูกบาศก์ (Cubic hole)</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Section 2 -->
+            <div>
+                <h3 style="color:#38bdf8; margin-bottom:8px;">2. เปรียบเทียบ Closest Packing: HCP vs FCC (ตอนที่ 1 ข. หน้า 16)</h3>
+                <table class="lab-table">
+                    <tr>
+                        <th>หัวข้อ</th>
+                        <th>Hexagonal Closest Packing (HCP)</th>
+                        <th>Face-Centred Cubic (FCC / CCP)</th>
+                    </tr>
+                    <tr>
+                        <td>ลำดับชั้น</td>
+                        <td><b>ABABAB...</b></td>
+                        <td><b>ABCABC...</b></td>
+                    </tr>
+                    <tr>
+                        <td>ลูกปิงปองชั้นที่ 1 ตรงกับชั้นที่</td>
+                        <td><b>3, 5, 7, ...</b></td>
+                        <td><b>4, 7, 10, ...</b></td>
+                    </tr>
+                    <tr>
+                        <td>ช่องออกตะฮีดรัลต่ออะตอมกลาง</td>
+                        <td>6/6 = <b>1</b></td>
+                        <td>6/6 = <b>1</b></td>
+                    </tr>
+                    <tr>
+                        <td>ช่องเททระฮีดรัลต่ออะตอมกลาง</td>
+                        <td>8/4 = <b>2</b></td>
+                        <td>8/4 = <b>2</b></td>
+                    </tr>
+                    <tr>
+                        <td>เลขโคออร์ดิเนชัน (CN)</td>
+                        <td><b>12</b> (6 ในชั้น + 3 บน + 3 ล่าง)</td>
+                        <td><b>12</b> (6 ในชั้น + 3 บน + 3 ล่าง)</td>
+                    </tr>
+                    <tr>
+                        <td>มุมมอง Top View (หน้า 16)</td>
+                        <td>ชั้น 1 และ 3 <b>ซ้อนทับกันพอดี</b> ลูกบอลยอดชี้ทิศเดียวกัน</td>
+                        <td>ชั้น 1, 2, 3 <b>สลับกันไม่ทับกัน</b> ลูกบอลยอดชี้กลับด้าน 180°</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Section 3 -->
+            <div>
+                <h3 style="color:#38bdf8; margin-bottom:8px;">3. สรุปโครงสร้างสารประกอบไอออนิก (ตอนที่ 3 หน้า 18)</h3>
+                <table class="lab-table">
+                    <tr>
+                        <th>สารประกอบ</th>
+                        <th>โครงสร้างไอออนลบ</th>
+                        <th>ตำแหน่งของไอออนบวก</th>
+                        <th>CN (บวก:ลบ)</th>
+                        <th>จำนวนในยูนิตเซลล์ (n)</th>
+                    </tr>
+                    <tr>
+                        <td><b>Rock Salt (NaCl)</b></td>
+                        <td>FCC (Cl<sup>-</sup>)</td>
+                        <td>บรรจุใน <b>ช่องออกตะฮีดรัลทุกช่อง</b></td>
+                        <td>6 : 6</td>
+                        <td>4 สูตรหน่วย (4 Na<sup>+</sup>, 4 Cl<sup>-</sup>)</td>
+                    </tr>
+                    <tr>
+                        <td><b>Zinc Blende (ZnS)</b></td>
+                        <td>FCC (S<sup>2-</sup>)</td>
+                        <td>บรรจุใน <b>ช่องเททระฮีดรัลสลับช่องเว้นช่อง (4 จาก 8 ช่อง)</b></td>
+                        <td>4 : 4</td>
+                        <td>4 สูตรหน่วย (4 Zn<sup>2+</sup>, 4 S<sup>2-</sup>)</td>
+                    </tr>
+                    <tr>
+                        <td><b>Fluorite (CaF<sub>2</sub>)</b></td>
+                        <td>FCC (Ca<sup>2+</sup>)</td>
+                        <td>บรรจุใน <b>ช่องเททระฮีดรัลครบทั้ง 8 ช่อง</b> (F<sup>-</sup>)</td>
+                        <td>8 : 4</td>
+                        <td>4 สูตรหน่วย (4 Ca<sup>2+</sup>, 8 F<sup>-</sup>)</td>
+                    </tr>
+                    <tr>
+                        <td><b>Cesium Chloride (CsCl)</b></td>
+                        <td>Simple Cubic (Cl<sup>-</sup>)</td>
+                        <td>บรรจุใน <b>ช่องลูกบาศก์ (Cubic Hole ตรงกลาง)</b></td>
+                        <td>8 : 8</td>
+                        <td>1 สูตรหน่วย (1 Cs<sup>+</sup>, 1 Cl<sup>-</sup>)</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Section 4: Answers to End-of-Lab Questions -->
+            <div>
+                <h3 style="color:#38bdf8; margin-bottom:8px;">4. เฉลยคำถามท้ายการทดลอง (หน้า 18-19)</h3>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div class="qa-card">
+                        <h4>ข้อ 1: คำนวณความหนาแน่นผลึก NaCl และ CsCl</h4>
+                        <p>สูตร: &rho; = (<i>n</i> &times; <i>M</i>) / (<i>V</i> &times; <i>N</i><sub>A</sub>) = (<i>n</i> &times; <i>M</i>) / (<i>a</i><sup>3</sup> &times; <i>N</i><sub>A</sub>)</p>
+                        <p>• <b>NaCl (Rock Salt, <i>n</i> = 4, <i>M</i> = 58.44 g/mol, <i>a</i> = 5.64 &times; 10<sup>-8</sup> cm):</b><br>
+                        &rho; = [4 &times; 58.44] / [(5.64 &times; 10<sup>-8</sup>)<sup>3</sup> &times; 6.022 &times; 10<sup>23</sup>] = <b>2.16 g/cm<sup>3</sup></b></p>
+                        <p>• <b>CsCl (CsCl structure, <i>n</i> = 1, <i>M</i> = 168.35 g/mol, <i>a</i> = 4.11 &times; 10<sup>-8</sup> cm):</b><br>
+                        &rho; = [1 &times; 168.35] / [(4.11 &times; 10<sup>-8</sup>)<sup>3</sup> &times; 6.022 &times; 10<sup>23</sup>] = <b>4.03 g/cm<sup>3</sup></b></p>
+                    </div>
+
+                    <div class="qa-card">
+                        <h4>ข้อ 2: โลหะมีตระกูลและมีค่า (Noble & precious metals เช่น Au, Pt, Ag, Cu) ชอบตกผลึกแบบใด เพราะเหตุใด?</h4>
+                        <p><b>คำตอบ:</b> ชอบตกผลึกแบบ <b>Closest Packing (โดยเฉพาะแบบ Face-Centred Cubic - FCC)</b> เนื่องจากเป็นการจัดเรียงที่หนาแน่นที่สุด (Packing efficiency สูงถึง 74.08% และมีเลขโคออร์ดิเนชันสูงสุดคือ 12) ทำให้พันธะโลหะยึดเหนี่ยวกันได้อย่างแข็งแรง กลุ่มหมอกอิเล็กตรอนหนาแน่น ส่งผลให้โครงสร้างมีพลังงานต่ำและมีความเสถียรทางอุณหพลศาสตร์สูงสุด</p>
+                    </div>
+
+                    <div class="qa-card">
+                        <h4>ข้อ 3: ตัวอย่างผลึกของสารประกอบอื่นๆ 2 ชนิดพร้อมระบุแรงยึดเหนี่ยว</h4>
+                        <p>1. <b>ซิลิกอนไดออกไซด์หรือควอตซ์ (SiO<sub>2</sub>):</b> เป็นผลึกร่างตาข่ายโคเวเลนต์ (Covalent network crystal) ยึดเหนี่ยวกันด้วย <b>พันธะโคเวเลนต์ (Covalent bond)</b> แข็งแรงมาก มีจุดหลอมเหลวสูงมาก</p>
+                        <p>2. <b>น้ำแข็ง (H<sub>2</sub>O):</b> เป็นผลึกโมเลกุล (Molecular crystal) ยึดเหนี่ยวระหว่างโมเลกุลด้วย <b>พันธะไฮโดรเจน (Hydrogen bond)</b> และแรงแผ่กระจายลอนดอน</p>
+                    </div>
+
+                    <div class="qa-card">
+                        <h4>ข้อ 4: เทคนิคการทดลองที่ใช้ในการหาโครงสร้างผลึก อธิบายโดยย่อ</h4>
+                        <p><b>คำตอบ:</b> เทคนิค <b>X-ray Diffraction (XRD) หรือการเลี้ยวเบนของรังสีเอกซ์</b> โดยการยิงรังสีเอกซ์ที่มีความยาวคลื่นใกล้เคียงกับระยะห่างระหว่างระนาบอะตอมในผลึก เมื่อรังสีเอกซ์กระทบกับอะตอมในผลึกจะเกิดการเลี้ยวเบนและแทรกสอดตามกฎของแบร็กก์ (<i>n</i>&lambda; = 2<i>d</i> sin&theta;) ทำให้เกิดรูปแบบการเลี้ยวเบน (Diffraction pattern) นำไปวิเคราะห์คำนวณหาตำแหน่งอะตอม ขนาด และรูปร่างของยูนิตเซลล์ได้</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= THREE.JS APPLICATION SCRIPT ================= -->
     <script>
+        // --- 1. Scene & Setup ---
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x090d16);
+        scene.background = new THREE.Color(0x070b14);
 
-        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-        camera.position.set(2.4, 2.0, 3.2);
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 150);
+        camera.position.set(0, 10, 16);
 
-        const renderer = new THREE.WebGLRenderer({
-            antialias: true
-        });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
         renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setPixelRatio(window.devicePixelRatio || 1);
         renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
 
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-
-        // ระบบแสงสว่าง
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-        scene.add(ambientLight);
-        const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight1.position.set(5, 10, 7);
-        scene.add(dirLight1);
-        const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.3);
-        dirLight2.position.set(-5, -5, -5);
-        scene.add(dirLight2);
-
-        // กรอบยูนิตเซลล์ (Cube Wireframe)
-        const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-        const boxEdges = new THREE.EdgesGeometry(boxGeo);
-        const boxLine = new THREE.LineSegments(boxEdges, new THREE.LineBasicMaterial({
-            color: 0x64748b,
-            linewidth: 2
-        }));
-        scene.add(boxLine);
-
-        const crystalGroup = new THREE.Group();
-        scene.add(crystalGroup);
-
-        let isExpanded = false;
-
-        // ฐานข้อมูลโครงสร้าง
-        const structures = {
-            sc: {
-                name: "Simple Cubic (SC)",
-                n: "1 อะตอม",
-                cn: "6",
-                pe: "52.38%",
-                void: "47.62%",
-                desc: "อะตอมอยู่ที่มุมทั้ง 8 มุมเท่านั้น (8 × 1/8 = 1 อะตอม) จัดเรียงหลวมที่สุด",
-                legend: [{
-                    name: "อะตอมโลหะ",
-                    color: "#38bdf8"
-                }],
-                create: (scale) => {
-                    const r = scale ? 0.5 : 0.14;
-                    const mat = new THREE.MeshStandardMaterial({
-                        color: 0x38bdf8,
-                        roughness: 0.3,
-                        metalness: 0.5
-                    });
-                    const corners = [-0.5, 0.5];
-                    corners.forEach(x => corners.forEach(y => corners.forEach(z => {
-                        addSphere(x, y, z, r, mat);
-                    })));
-                }
-            },
-            bcc: {
-                name: "Body-Centred Cubic (BCC)",
-                n: "2 อะตอม",
-                cn: "8",
-                pe: "68.04%",
-                void: "31.96%",
-                desc: "มุมทั้ง 8 มุม (นับเป็น 1) และมีอีก 1 อะตอมอยู่ตรงใจกลางลูกบาศก์พอดี เช่น Na, K, Fe",
-                legend: [{
-                    name: "อะตอมที่มุม",
-                    color: "#38bdf8"
-                }, {
-                    name: "อะตอมใจกลางเซลล์",
-                    color: "#f59e0b"
-                }],
-                create: (scale) => {
-                    const r = scale ? 0.433 : 0.14;
-                    const matCorner = new THREE.MeshStandardMaterial({
-                        color: 0x38bdf8,
-                        roughness: 0.3,
-                        metalness: 0.5
-                    });
-                    const matCenter = new THREE.MeshStandardMaterial({
-                        color: 0xf59e0b,
-                        roughness: 0.3,
-                        metalness: 0.5
-                    });
-                    const c = [-0.5, 0.5];
-                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, r, matCorner))));
-                    addSphere(0, 0, 0, r, matCenter);
-                }
-            },
-            fcc: {
-                name: "Face-Centred Cubic (FCC)",
-                n: "4 อะตอม",
-                cn: "12",
-                pe: "74.08%",
-                void: "25.92%",
-                desc: "มุมทั้ง 8 มุม (1 อะตอม) + กลางผิวหน้าทั้ง 6 หน้า (3 อะตอม) เป็นการจัดเรียงชิดที่สุด (Closest Packing) เช่น Cu, Ag, Au",
-                legend: [{
-                    name: "อะตอมที่มุม",
-                    color: "#38bdf8"
-                }, {
-                    name: "อะตอมที่ผิวหน้า",
-                    color: "#ec4899"
-                }],
-                create: (scale) => {
-                    const r = scale ? 0.353 : 0.13;
-                    const matCorner = new THREE.MeshStandardMaterial({
-                        color: 0x38bdf8,
-                        roughness: 0.3,
-                        metalness: 0.5
-                    });
-                    const matFace = new THREE.MeshStandardMaterial({
-                        color: 0xec4899,
-                        roughness: 0.3,
-                        metalness: 0.5
-                    });
-                    const c = [-0.5, 0.5];
-                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, r, matCorner))));
-                    const faces = [
-                        [0, 0, 0.5],
-                        [0, 0, -0.5],
-                        [0, 0.5, 0],
-                        [0, -0.5, 0],
-                        [0.5, 0, 0],
-                        [-0.5, 0, 0]
-                    ];
-                    faces.forEach(p => addSphere(p[0], p[1], p[2], r, matFace));
-                }
-            },
-            nacl: {
-                name: "Rock Salt (NaCl)",
-                n: "4 สูตรหน่วย (4 Na⁺, 4 Cl⁻)",
-                cn: "6 : 6",
-                pe: "ขึ้นกับชนิดไอออน",
-                void: "-",
-                desc: "Cl⁻ จัดตัวแบบ FCC ส่วน Na⁺ ขนาดเล็กกว่าแทรกอยู่ในช่องออกตะฮีดรัล (Octahedral) ทุกช่อง (ขอบ 12 ด้าน + กลางเซลล์ 1 จุด)",
-                legend: [{
-                    name: "Cl⁻ (ไอออนลบ - FCC)",
-                    color: "#22c55e"
-                }, {
-                    name: "Na⁺ (ไอออนบวก - Octahedral)",
-                    color: "#a855f7"
-                }],
-                create: (scale) => {
-                    const rCl = scale ? 0.28 : 0.13;
-                    const rNa = scale ? 0.16 : 0.08;
-                    const matCl = new THREE.MeshStandardMaterial({
-                        color: 0x22c55e,
-                        roughness: 0.3
-                    });
-                    const matNa = new THREE.MeshStandardMaterial({
-                        color: 0xa855f7,
-                        roughness: 0.3
-                    });
-                    const c = [-0.5, 0.5];
-                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, rCl, matCl))));
-                    [
-                        [0, 0, 0.5],
-                        [0, 0, -0.5],
-                        [0, 0.5, 0],
-                        [0, -0.5, 0],
-                        [0.5, 0, 0],
-                        [-0.5, 0, 0]
-                    ].forEach(p => addSphere(p[0], p[1], p[2], rCl, matCl));
-                    addSphere(0, 0, 0, rNa, matNa);
-                    const edges = [
-                        [0.5, 0.5, 0],
-                        [-0.5, 0.5, 0],
-                        [0.5, -0.5, 0],
-                        [-0.5, -0.5, 0],
-                        [0.5, 0, 0.5],
-                        [-0.5, 0, 0.5],
-                        [0.5, 0, -0.5],
-                        [-0.5, 0, -0.5],
-                        [0, 0.5, 0.5],
-                        [0, -0.5, 0.5],
-                        [0, 0.5, -0.5],
-                        [0, -0.5, -0.5]
-                    ];
-                    edges.forEach(p => addSphere(p[0], p[1], p[2], rNa, matNa));
-                }
-            },
-            cscl: {
-                name: "Cesium Chloride (CsCl)",
-                n: "1 สูตรหน่วย (1 Cs⁺, 1 Cl⁻)",
-                cn: "8 : 8",
-                pe: "จัดแบบลูกบาศก์",
-                void: "-",
-                desc: "Cl⁻ จัดแบบ Simple Cubic โดยมี Cs⁺ ขนาดใหญ่อยู่ตรงกลางยูนิตเซลล์พอดี (Cubic Hole)",
-                legend: [{
-                    name: "Cl⁻ (มุม 8 จุด)",
-                    color: "#22c55e"
-                }, {
-                    name: "Cs⁺ (กลางยูนิตเซลล์)",
-                    color: "#e11d48"
-                }],
-                create: (scale) => {
-                    const rCl = scale ? 0.32 : 0.13;
-                    const rCs = scale ? 0.30 : 0.12;
-                    const matCl = new THREE.MeshStandardMaterial({
-                        color: 0x22c55e
-                    });
-                    const matCs = new THREE.MeshStandardMaterial({
-                        color: 0xe11d48
-                    });
-                    const c = [-0.5, 0.5];
-                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, rCl, matCl))));
-                    addSphere(0, 0, 0, rCs, matCs);
-                }
-            },
-            zns: {
-                name: "Zinc Blende (ZnS)",
-                n: "4 สูตรหน่วย (4 Zn²⁺, 4 S²⁻)",
-                cn: "4 : 4",
-                pe: "เตตระฮีดรัล",
-                void: "-",
-                desc: "S²⁻ จัดแบบ FCC ส่วน Zn²⁺ เข้าไปอยู่เฉพาะในช่องเททระฮีดรัล (Tetrahedral holes) แบบ 'ช่องเว้นช่อง' (4 จาก 8 ช่อง)",
-                legend: [{
-                    name: "S²⁻ (FCC)",
-                    color: "#eab308"
-                }, {
-                    name: "Zn²⁺ (Tetrahedral ครึ่งเดียว)",
-                    color: "#06b6d4"
-                }],
-                create: (scale) => {
-                    const rS = scale ? 0.28 : 0.13;
-                    const rZn = scale ? 0.14 : 0.08;
-                    const matS = new THREE.MeshStandardMaterial({
-                        color: 0xeab308
-                    });
-                    const matZn = new THREE.MeshStandardMaterial({
-                        color: 0x06b6d4
-                    });
-                    const c = [-0.5, 0.5];
-                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, rS, matS))));
-                    [
-                        [0, 0, 0.5],
-                        [0, 0, -0.5],
-                        [0, 0.5, 0],
-                        [0, -0.5, 0],
-                        [0.5, 0, 0],
-                        [-0.5, 0, 0]
-                    ].forEach(p => addSphere(p[0], p[1], p[2], rS, matS));
-                    const tHoles = [
-                        [0.25, 0.25, 0.25],
-                        [-0.25, -0.25, 0.25],
-                        [-0.25, 0.25, -0.25],
-                        [0.25, -0.25, -0.25]
-                    ];
-                    tHoles.forEach(p => addSphere(p[0], p[1], p[2], rZn, matZn));
-                }
-            },
-            caf2: {
-                name: "Fluorite (CaF₂)",
-                n: "4 Ca²⁺, 8 F⁻ (สูตร CaF₂)",
-                cn: "8 : 4",
-                pe: "เตตระฮีดรัลเต็ม",
-                void: "-",
-                desc: "Ca²⁺ จัดแบบ FCC ส่วน F⁻ เข้าไปบรรจุในช่องเททระฮีดรัล 'ครบทั้ง 8 ช่อง' ภายในเซลล์",
-                legend: [{
-                    name: "Ca²⁺ (FCC)",
-                    color: "#6366f1"
-                }, {
-                    name: "F⁻ (Tetrahedral ทั้ง 8 ช่อง)",
-                    color: "#14b8a6"
-                }],
-                create: (scale) => {
-                    const rCa = scale ? 0.26 : 0.13;
-                    const rF = scale ? 0.14 : 0.08;
-                    const matCa = new THREE.MeshStandardMaterial({
-                        color: 0x6366f1
-                    });
-                    const matF = new THREE.MeshStandardMaterial({
-                        color: 0x14b8a6
-                    });
-                    const c = [-0.5, 0.5];
-                    c.forEach(x => c.forEach(y => c.forEach(z => addSphere(x, y, z, rCa, matCa))));
-                    [
-                        [0, 0, 0.5],
-                        [0, 0, -0.5],
-                        [0, 0.5, 0],
-                        [0, -0.5, 0],
-                        [0.5, 0, 0],
-                        [-0.5, 0, 0]
-                    ].forEach(p => addSphere(p[0], p[1], p[2], rCa, matCa));
-                    const tHoles = [
-                        [0.25, 0.25, 0.25],
-                        [0.25, 0.25, -0.25],
-                        [0.25, -0.25, 0.25],
-                        [0.25, -0.25, -0.25],
-                        [-0.25, 0.25, 0.25],
-                        [-0.25, 0.25, -0.25],
-                        [-0.25, -0.25, 0.25],
-                        [-0.25, -0.25, -0.25]
-                    ];
-                    tHoles.forEach(p => addSphere(p[0], p[1], p[2], rF, matF));
-                }
-            }
-        };
-
-        function addSphere(x, y, z, radius, material) {
-            const geo = new THREE.SphereGeometry(radius, 24, 24);
-            const mesh = new THREE.Mesh(geo, material);
-            mesh.position.set(x, y, z);
-            crystalGroup.add(mesh);
-        }
-
-        function renderStructure(key) {
-            while (crystalGroup.children.length > 0) {
-                crystalGroup.remove(crystalGroup.children[0]);
-            }
-            const data = structures[key];
-            data.create(isExpanded);
-
-            document.getElementById('cardName').textContent = data.name;
-            document.getElementById('cardN').textContent = data.n;
-            document.getElementById('cardCN').textContent = data.cn;
-            document.getElementById('cardPE').textContent = data.pe;
-            document.getElementById('cardVoid').textContent = data.void;
-            document.getElementById('descText').textContent = data.desc;
-
-            const legendBox = document.getElementById('legendItems');
-            legendBox.innerHTML = '';
-            data.legend.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'legend-item';
-                div.innerHTML = `<span class="color-dot" style="background:${item.color}"></span><span>${item.name}</span>`;
-                legendBox.appendChild(div);
+        // OrbitControls with fallback safety
+        let controls;
+        if (typeof THREE.OrbitControls !== 'undefined') {
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.06;
+            controls.maxDistance = 50;
+            controls.minDistance = 2;
+        } else {
+            console.warn("Using inline orbit fallback");
+            // Minimal fallback for rotation
+            let isDragging = false, prevMouseX = 0, prevMouseY = 0;
+            renderer.domElement.addEventListener('mousedown', e => { isDragging = true; prevMouseX = e.clientX; prevMouseY = e.clientY; });
+            window.addEventListener('mouseup', () => isDragging = false);
+            renderer.domElement.addEventListener('mousemove', e => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - prevMouseX;
+                const deltaY = e.clientY - prevMouseY;
+                sceneGroup.rotation.y += deltaX * 0.008;
+                sceneGroup.rotation.x += deltaY * 0.008;
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
             });
         }
 
-        document.getElementById('structureSelect').addEventListener('change', (e) => {
-            renderStructure(e.target.value);
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+        scene.add(ambientLight);
+
+        const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight1.position.set(12, 20, 15);
+        scene.add(dirLight1);
+
+        const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.4);
+        dirLight2.position.set(-15, -10, -10);
+        scene.add(dirLight2);
+
+        // Root Group
+        const sceneGroup = new THREE.Group();
+        scene.add(sceneGroup);
+
+        // State Machine
+        const state = {
+            currentTab: 'pingpong', // pingpong | holes | unitcells | ionic
+            stacking: 'hcp', // hcp | fcc
+            pingpongCluster: 'lab', // lab | full | single
+            singleLayerType: 'closest', // closest | simple
+            layerA: true,
+            layerB: true,
+            layerC: true,
+            layerSpacing: 0.0, // 0 to 1
+            showTHoles: true,
+            showOHoles: true,
+            holeType: 'tetra', // tetra | octa | cubic
+            holeExplode: 0.0,
+            showHolePolyhedron: true,
+            showHoleCentralSphere: true,
+            metallicType: 'fcc', // sc | bcc | fcc
+            metallicStyle: 'stick', // stick | fill
+            showCellBox: true,
+            ionicType: 'nacl', // nacl | cscl | zns | caf2
+            ionicStyle: 'stick', // stick | fill
+            autoRotate: false
+        };
+
+        // Standard Material Factory
+        const materials = {
+            pingpongA: new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.35, metalness: 0.1 }),
+            pingpongB: new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.35, metalness: 0.1 }),
+            pingpongC: new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.35, metalness: 0.1 }),
+            tetraHole: new THREE.MeshStandardMaterial({ color: 0xd946ef, emissive: 0x9333ea, emissiveIntensity: 0.5, roughness: 0.2 }),
+            octaHole: new THREE.MeshStandardMaterial({ color: 0xfb923c, emissive: 0xea580c, emissiveIntensity: 0.5, roughness: 0.2 }),
+            cubicHole: new THREE.MeshStandardMaterial({ color: 0xf43f5e, emissive: 0xbe123c, emissiveIntensity: 0.5, roughness: 0.2 }),
+            polyhedronTetra: new THREE.MeshStandardMaterial({ color: 0xd946ef, transparent: true, opacity: 0.25, side: THREE.DoubleSide }),
+            polyhedronOcta: new THREE.MeshStandardMaterial({ color: 0xfb923c, transparent: true, opacity: 0.25, side: THREE.DoubleSide }),
+            polyhedronCube: new THREE.MeshStandardMaterial({ color: 0xf43f5e, transparent: true, opacity: 0.25, side: THREE.DoubleSide }),
+            wireframe: new THREE.LineBasicMaterial({ color: 0x94a3b8, linewidth: 2 }),
+            accentWire: new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2 }),
+            ionCl: new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.3, metalness: 0.1 }),
+            ionNa: new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.3, metalness: 0.1 }),
+            ionCs: new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.3, metalness: 0.1 }),
+            ionS: new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.3, metalness: 0.1 }),
+            ionZn: new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.3, metalness: 0.1 }),
+            ionCa: new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.3, metalness: 0.1 }),
+            ionF: new THREE.MeshStandardMaterial({ color: 0x14b8a6, roughness: 0.3, metalness: 0.1 }),
+            gridUnitLine: new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 3 })
+        };
+
+        // Shared Sphere Geometries
+        const sphereGeos = {
+            large: new THREE.SphereGeometry(1.0, 32, 32),
+            medium: new THREE.SphereGeometry(0.5, 24, 24),
+            small: new THREE.SphereGeometry(0.25, 20, 20)
+        };
+
+        function clearScene() {
+            while (sceneGroup.children.length > 0) {
+                const obj = sceneGroup.children[0];
+                sceneGroup.remove(obj);
+            }
+        }
+
+        function createSphere(x, y, z, radius, material) {
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 28, 28), material);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            return mesh;
+        }
+
+        // ================= MATHEMATICAL GENERATION =================
+        const R = 1.0; // Radius of ping pong ball
+        const LAYER_H = Math.sqrt(8.0 / 3.0) * R; // Vertical layer spacing: ~1.633
+
+        // Helper: Hexagonal cluster generator
+        function getHexCluster(radiusSteps) {
+            const points = [];
+            const a1 = [2.0 * R, 0.0];
+            const a2 = [1.0 * R, Math.sqrt(3.0) * R];
+            for (let q = -radiusSteps; q <= radiusSteps; q++) {
+                const r1 = Math.max(-radiusSteps, -q - radiusSteps);
+                const r2 = Math.min(radiusSteps, -q + radiusSteps);
+                for (let r = r1; r <= r2; r++) {
+                    const x = q * a1[0] + r * a2[0];
+                    const y = q * a1[1] + r * a2[1];
+                    points.push({ x, y });
+                }
+            }
+            return points;
+        }
+
+        // --- Render Ping-Pong Packing ---
+        function renderPingPongPacking() {
+            clearScene();
+            const explode = state.layerSpacing * 2.8;
+
+            // Check if user selected 1-layer comparison
+            if (state.pingpongCluster === 'single') {
+                renderSingleLayer();
+                return;
+            }
+
+            const isLabSetup = (state.pingpongCluster === 'lab');
+            const isHCP = (state.stacking === 'hcp');
+
+            // Layer Heights
+            const zA = 0;
+            const zB = LAYER_H + explode;
+            const zC = (LAYER_H * 2.0) + (explode * 2.0);
+
+            // B-site and C-site shifts relative to A
+            const shiftB = { x: 1.0 * R, y: (Math.sqrt(3.0) / 3.0) * R };
+            const shiftC = { x: 0.0, y: (2.0 * Math.sqrt(3.0) / 3.0) * R };
+
+            // Layer 1 (A)
+            let layer1Coords = [];
+            if (isLabSetup) {
+                // Hexagonal base of 19 balls (radius 2)
+                layer1Coords = getHexCluster(2);
+            } else {
+                // Full grid of 19 balls
+                layer1Coords = getHexCluster(2);
+            }
+
+            // Layer 2 (B)
+            let layer2Coords = [];
+            if (isLabSetup) {
+                // 7 balls in hexagonal cluster around center B-site
+                const hex7 = getHexCluster(1);
+                layer2Coords = hex7.map(p => ({ x: p.x + shiftB.x, y: p.y + shiftB.y }));
+            } else {
+                // 12 balls in B sites
+                const allA = getHexCluster(2);
+                layer2Coords = allA.map(p => ({ x: p.x + shiftB.x, y: p.y + shiftB.y }))
+                    .filter(p => Math.sqrt(p.x * p.x + p.y * p.y) < 3.2);
+            }
+
+            // Layer 3 (A for HCP, C for FCC)
+            let layer3Coords = [];
+            if (isLabSetup) {
+                // 3 balls triangle as in Lab Fig 17!
+                // Equilateral triangle of 3 balls touching each other
+                // Centroid placed at the central B-site (shiftB.x, shiftB.y)
+                const circR = (2.0 * R) / Math.sqrt(3.0);
+                if (isHCP) {
+                    // Apex points UP (90 deg) -> sits at A-sites (directly over layer 1 balls!)
+                    const angles = [Math.PI / 2, Math.PI / 2 + (2 * Math.PI / 3), Math.PI / 2 + (4 * Math.PI / 3)];
+                    layer3Coords = angles.map(ang => ({
+                        x: shiftB.x + circR * Math.cos(ang),
+                        y: shiftB.y + circR * Math.sin(ang)
+                    }));
+                } else {
+                    // Apex points DOWN (270 deg - 180 opposite!) -> sits at C-sites (over octahedral holes!)
+                    const angles = [-Math.PI / 2, -Math.PI / 2 + (2 * Math.PI / 3), -Math.PI / 2 + (4 * Math.PI / 3)];
+                    layer3Coords = angles.map(ang => ({
+                        x: shiftB.x + circR * Math.cos(ang),
+                        y: shiftB.y + circR * Math.sin(ang)
+                    }));
+                }
+            } else {
+                // Full grid for Layer 3
+                if (isHCP) {
+                    layer3Coords = getHexCluster(1); // Same A-sites
+                } else {
+                    const allA = getHexCluster(2);
+                    layer3Coords = allA.map(p => ({ x: p.x + shiftC.x, y: p.y + shiftC.y }))
+                        .filter(p => Math.sqrt(p.x * p.x + p.y * p.y) < 2.8);
+                }
+            }
+
+            // Create Visual Meshes (Three.js coordinates: X horizontal, Y up, Z depth)
+            // We map: X -> X, Layer Height -> Y, Grid Y -> Z
+            const groupA = new THREE.Group();
+            const groupB = new THREE.Group();
+            const groupC = new THREE.Group();
+
+            if (state.layerA) {
+                layer1Coords.forEach(p => {
+                    const mesh = createSphere(p.x, zA, p.y, R, materials.pingpongA);
+                    groupA.add(mesh);
+                });
+            }
+
+            if (state.layerB) {
+                layer2Coords.forEach(p => {
+                    const mesh = createSphere(p.x, zB, p.y, R, materials.pingpongB);
+                    groupB.add(mesh);
+                });
+            }
+
+            if (state.layerC) {
+                const matC = isHCP ? materials.pingpongA : materials.pingpongC;
+                layer3Coords.forEach(p => {
+                    const mesh = createSphere(p.x, zC, p.y, R, matC);
+                    groupC.add(mesh);
+                });
+            }
+
+            sceneGroup.add(groupA);
+            sceneGroup.add(groupB);
+            sceneGroup.add(groupC);
+
+            // Render Holes Markers if enabled
+            if (state.layerA && state.layerB) {
+                const holesGroup = new THREE.Group();
+                const h12 = zB - zA;
+
+                // 1. Tetrahedral Holes between Layer 1 & 2
+                if (state.showTHoles) {
+                    // T_up (under every B ball)
+                    layer2Coords.forEach(p => {
+                        const tMesh = createSphere(p.x, zA + (h12 * 0.25), p.y, 0.24, materials.tetraHole);
+                        holesGroup.add(tMesh);
+                    });
+                    // T_down (over central A balls)
+                    layer1Coords.filter(p => Math.sqrt(p.x * p.x + p.y * p.y) < 2.5).forEach(p => {
+                        const tMesh = createSphere(p.x, zA + (h12 * 0.75), p.y, 0.24, materials.tetraHole);
+                        holesGroup.add(tMesh);
+                    });
+                }
+
+                // 2. Octahedral Holes between Layer 1 & 2 (at C-sites)
+                if (state.showOHoles) {
+                    const oSites = [
+                        { x: shiftC.x, y: shiftC.y },
+                        { x: shiftC.x + 2.0, y: shiftC.y },
+                        { x: shiftC.x - 2.0, y: shiftC.y },
+                        { x: shiftC.x + 1.0, y: shiftC.y + Math.sqrt(3.0) },
+                        { x: shiftC.x - 1.0, y: shiftC.y + Math.sqrt(3.0) },
+                        { x: shiftC.x + 1.0, y: shiftC.y - Math.sqrt(3.0) },
+                        { x: shiftC.x - 1.0, y: shiftC.y - Math.sqrt(3.0) }
+                    ];
+                    oSites.forEach(p => {
+                        const oMesh = createSphere(p.x, zA + (h12 * 0.5), p.y, 0.38, materials.octaHole);
+                        holesGroup.add(oMesh);
+                    });
+                }
+                sceneGroup.add(holesGroup);
+            }
+
+            // Center cluster in scene
+            sceneGroup.position.set(-shiftB.x / 2, -LAYER_H, -shiftB.y / 2);
+            updateUIInfo();
+        }
+
+        // --- Render 1 Layer Packing ---
+        function renderSingleLayer() {
+            clearScene();
+            sceneGroup.position.set(0, 0, 0);
+
+            if (state.singleLayerType === 'closest') {
+                // Hexagonal 2D arrangement (5x4 grid)
+                const rows = 4;
+                const cols = 5;
+                for (let r = 0; r < rows; r++) {
+                    const offsetX = (r % 2 === 1) ? 1.0 * R : 0;
+                    for (let c = 0; c < cols; c++) {
+                        const x = (c * 2.0 * R) + offsetX - 4.5;
+                        const z = (r * Math.sqrt(3.0) * R) - 2.5;
+                        const sphere = createSphere(x, 0, z, R, materials.pingpongA);
+                        sceneGroup.add(sphere);
+                    }
+                }
+
+                // Draw Parallelogram Unit Cell ABCD as shown in Fig 10
+                const pts = [
+                    new THREE.Vector3(-2.5, 0.05, -2.5),
+                    new THREE.Vector3(-0.5, 0.05, -2.5),
+                    new THREE.Vector3(0.5, 0.05, -2.5 + Math.sqrt(3.0)),
+                    new THREE.Vector3(-1.5, 0.05, -2.5 + Math.sqrt(3.0)),
+                    new THREE.Vector3(-2.5, 0.05, -2.5)
+                ];
+                const geo = new THREE.BufferGeometry().setFromPoints(pts);
+                const line = new THREE.Line(geo, materials.gridUnitLine);
+                sceneGroup.add(line);
+
+            } else {
+                // Simple Cubic 2D (Square Grid 4x4)
+                for (let r = 0; r < 4; r++) {
+                    for (let c = 0; c < 5; c++) {
+                        const x = (c * 2.0 * R) - 4.0;
+                        const z = (r * 2.0 * R) - 3.0;
+                        const sphere = createSphere(x, 0, z, R, materials.pingpongB);
+                        sceneGroup.add(sphere);
+                    }
+                }
+
+                // Draw Square Unit Cell
+                const pts = [
+                    new THREE.Vector3(-2.0, 0.05, -1.0),
+                    new THREE.Vector3(0.0, 0.05, -1.0),
+                    new THREE.Vector3(0.0, 0.05, 1.0),
+                    new THREE.Vector3(-2.0, 0.05, 1.0),
+                    new THREE.Vector3(-2.0, 0.05, -1.0)
+                ];
+                const geo = new THREE.BufferGeometry().setFromPoints(pts);
+                const line = new THREE.Line(geo, materials.gridUnitLine);
+                sceneGroup.add(line);
+            }
+            updateUIInfo();
+        }
+
+        // --- Render Isolated Holes (Tetrahedral, Octahedral, Cubic) ---
+        function renderIsolatedHoles() {
+            clearScene();
+            sceneGroup.position.set(0, 0, 0);
+
+            const exp = state.holeExplode * 1.5; // Radial explode distance
+
+            if (state.holeType === 'tetra') {
+                // 4 balls: 3 in base triangle + 1 top
+                const circR = (2.0 * R) / Math.sqrt(3.0);
+                const h = Math.sqrt(8.0 / 3.0) * R;
+
+                // Base 3 balls at y = -h/4
+                const v1 = new THREE.Vector3(0, -h / 4, circR);
+                const v2 = new THREE.Vector3(circR * Math.cos(Math.PI / 2 + 2 * Math.PI / 3), -h / 4, circR * Math.sin(Math.PI / 2 + 2 * Math.PI / 3));
+                const v3 = new THREE.Vector3(circR * Math.cos(Math.PI / 2 + 4 * Math.PI / 3), -h / 4, circR * Math.sin(Math.PI / 2 + 4 * Math.PI / 3));
+                const v4 = new THREE.Vector3(0, (3 * h) / 4, 0); // Top ball
+
+                const verts = [v1, v2, v3, v4];
+
+                // Create spheres with explode
+                verts.forEach((v, idx) => {
+                    const dir = v.clone().normalize();
+                    const pos = v.clone().add(dir.multiplyScalar(exp));
+                    const mat = (idx === 3) ? materials.pingpongB : materials.pingpongA;
+                    const sphere = createSphere(pos.x, pos.y, pos.z, R, mat);
+                    sceneGroup.add(sphere);
+                });
+
+                // Central interstitial ball (r = 0.225 R)
+                if (state.showHoleCentralSphere) {
+                    const holeSphere = createSphere(0, 0, 0, 0.225 * R, materials.tetraHole);
+                    sceneGroup.add(holeSphere);
+                }
+
+                // 3D Tetrahedron Polyhedron connecting centers
+                if (state.showHolePolyhedron) {
+                    const tetraGeo = new THREE.BufferGeometry();
+                    const vertices = new Float32Array([
+                        v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z,
+                        v1.x, v1.y, v1.z, v4.x, v4.y, v4.z, v2.x, v2.y, v2.z,
+                        v2.x, v2.y, v2.z, v4.x, v4.y, v4.z, v3.x, v3.y, v3.z,
+                        v3.x, v3.y, v3.z, v4.x, v4.y, v4.z, v1.x, v1.y, v1.z
+                    ]);
+                    tetraGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                    tetraGeo.computeVertexNormals();
+
+                    const mesh = new THREE.Mesh(tetraGeo, materials.polyhedronTetra);
+                    const wire = new THREE.LineSegments(new THREE.WireframeGeometry(tetraGeo), materials.wireframe);
+                    sceneGroup.add(mesh);
+                    sceneGroup.add(wire);
+                }
+
+            } else if (state.holeType === 'octa') {
+                // 6 balls: 3 in bottom triangle + 3 in top triangle (inverted)
+                const circR = (2.0 * R) / Math.sqrt(3.0);
+                const halfH = Math.sqrt(2.0 / 3.0) * R; // = h / 2
+
+                const b1 = new THREE.Vector3(circR * Math.cos(Math.PI / 2), -halfH, circR * Math.sin(Math.PI / 2));
+                const b2 = new THREE.Vector3(circR * Math.cos(Math.PI / 2 + 2 * Math.PI / 3), -halfH, circR * Math.sin(Math.PI / 2 + 2 * Math.PI / 3));
+                const b3 = new THREE.Vector3(circR * Math.cos(Math.PI / 2 + 4 * Math.PI / 3), -halfH, circR * Math.sin(Math.PI / 2 + 4 * Math.PI / 3));
+
+                // Top inverted triangle (rotated 60 deg)
+                const t1 = new THREE.Vector3(circR * Math.cos(-Math.PI / 2), halfH, circR * Math.sin(-Math.PI / 2));
+                const t2 = new THREE.Vector3(circR * Math.cos(-Math.PI / 2 + 2 * Math.PI / 3), halfH, circR * Math.sin(-Math.PI / 2 + 2 * Math.PI / 3));
+                const t3 = new THREE.Vector3(circR * Math.cos(-Math.PI / 2 + 4 * Math.PI / 3), halfH, circR * Math.sin(-Math.PI / 2 + 4 * Math.PI / 3));
+
+                const bottomVerts = [b1, b2, b3];
+                const topVerts = [t1, t2, t3];
+
+                bottomVerts.forEach(v => {
+                    const pos = v.clone().add(v.clone().normalize().multiplyScalar(exp));
+                    sceneGroup.add(createSphere(pos.x, pos.y, pos.z, R, materials.pingpongA));
+                });
+
+                topVerts.forEach(v => {
+                    const pos = v.clone().add(v.clone().normalize().multiplyScalar(exp));
+                    sceneGroup.add(createSphere(pos.x, pos.y, pos.z, R, materials.pingpongB));
+                });
+
+                // Central interstitial ball (r = 0.414 R)
+                if (state.showHoleCentralSphere) {
+                    const holeSphere = createSphere(0, 0, 0, 0.414 * R, materials.octaHole);
+                    sceneGroup.add(holeSphere);
+                }
+
+                // Octahedron Wireframe & Translucent faces
+                if (state.showHolePolyhedron) {
+                    // Regular octahedron connecting the 6 sphere centers
+                    const octaGeo = new THREE.BufferGeometry();
+                    const tris = [
+                        // Top cap triangles
+                        t1, t2, b3,
+                        t2, t3, b1,
+                        t3, t1, b2,
+                        // Bottom cap triangles
+                        b1, b2, t3,
+                        b2, b3, t1,
+                        b3, b1, t2,
+                        // Side triangles
+                        t1, b3, b2,
+                        t2, b1, b3
+                    ];
+                    const pts = [];
+                    tris.forEach(v => pts.push(v.x, v.y, v.z));
+                    octaGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));
+                    octaGeo.computeVertexNormals();
+
+                    const mesh = new THREE.Mesh(octaGeo, materials.polyhedronOcta);
+                    const wire = new THREE.LineSegments(new THREE.WireframeGeometry(octaGeo), materials.wireframe);
+                    sceneGroup.add(mesh);
+                    sceneGroup.add(wire);
+                }
+
+            } else if (state.holeType === 'cubic') {
+                // 8 balls: corners of a cube of edge length 2R
+                const corners = [];
+                for (let x of [-1, 1]) {
+                    for (let y of [-1, 1]) {
+                        for (let z of [-1, 1]) {
+                            const v = new THREE.Vector3(x * R, y * R, z * R);
+                            corners.push(v);
+                            const pos = v.clone().add(v.clone().normalize().multiplyScalar(exp));
+                            const mat = (y > 0) ? materials.pingpongB : materials.pingpongA;
+                            sceneGroup.add(createSphere(pos.x, pos.y, pos.z, R, mat));
+                        }
+                    }
+                }
+
+                // Central sphere (r = 0.732 R)
+                if (state.showHoleCentralSphere) {
+                    const holeSphere = createSphere(0, 0, 0, 0.732 * R, materials.cubicHole);
+                    sceneGroup.add(holeSphere);
+                }
+
+                // Translucent Cube
+                if (state.showHolePolyhedron) {
+                    const cubeGeo = new THREE.BoxGeometry(2 * R, 2 * R, 2 * R);
+                    const mesh = new THREE.Mesh(cubeGeo, materials.polyhedronCube);
+                    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(cubeGeo), materials.wireframe);
+                    sceneGroup.add(mesh);
+                    sceneGroup.add(wire);
+                }
+            }
+            updateUIInfo();
+        }
+
+        // --- Render Metallic Unit Cells ---
+        function renderMetallicCell() {
+            clearScene();
+            sceneGroup.position.set(0, 0, 0);
+
+            const isFill = (state.metallicStyle === 'fill');
+
+            // Wireframe Unit Cell Box
+            if (state.showCellBox) {
+                const boxGeo = new THREE.BoxGeometry(2, 2, 2);
+                const wire = new THREE.LineSegments(new THREE.EdgesGeometry(boxGeo), materials.wireframe);
+                sceneGroup.add(wire);
+            }
+
+            const corners = [-1, 1];
+
+            if (state.metallicType === 'sc') {
+                // SC: r = a / 2 = 1.0 (fill) or 0.28 (stick)
+                const r = isFill ? 1.0 : 0.28;
+                corners.forEach(x => corners.forEach(y => corners.forEach(z => {
+                    sceneGroup.add(createSphere(x, y, z, r, materials.pingpongA));
+                })));
+
+            } else if (state.metallicType === 'bcc') {
+                // BCC: 4r = a*sqrt(3) -> r = 2*sqrt(3)/4 = sqrt(3)/2 = 0.866
+                const r = isFill ? 0.866 : 0.28;
+                corners.forEach(x => corners.forEach(y => corners.forEach(z => {
+                    sceneGroup.add(createSphere(x, y, z, r, materials.pingpongA));
+                })));
+                sceneGroup.add(createSphere(0, 0, 0, r, materials.pingpongB));
+
+                // Diagonal Line to demonstrate body diagonal
+                const pts = [new THREE.Vector3(-1, -1, -1), new THREE.Vector3(1, 1, 1)];
+                const diagLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), materials.accentWire);
+                sceneGroup.add(diagLine);
+
+            } else if (state.metallicType === 'fcc') {
+                // FCC: 4r = a*sqrt(2) -> r = 2*sqrt(2)/4 = sqrt(2)/2 = 0.707
+                const r = isFill ? 0.707 : 0.26;
+                // Corners
+                corners.forEach(x => corners.forEach(y => corners.forEach(z => {
+                    sceneGroup.add(createSphere(x, y, z, r, materials.pingpongA));
+                })));
+                // 6 Faces
+                const faces = [
+                    [0, 0, 1], [0, 0, -1],
+                    [0, 1, 0], [0, -1, 0],
+                    [1, 0, 0], [-1, 0, 0]
+                ];
+                faces.forEach(p => {
+                    sceneGroup.add(createSphere(p[0], p[1], p[2], r, materials.pingpongB));
+                });
+
+                // Face Diagonal Line
+                const pts = [new THREE.Vector3(-1, -1, 1), new THREE.Vector3(1, 1, 1)];
+                const diagLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), materials.accentWire);
+                sceneGroup.add(diagLine);
+            }
+            updateUIInfo();
+        }
+
+        // --- Render Ionic Crystals ---
+        function renderIonicCrystal() {
+            clearScene();
+            sceneGroup.position.set(0, 0, 0);
+
+            const isFill = (state.ionicStyle === 'fill');
+
+            // Wireframe Unit Cell Box
+            const boxGeo = new THREE.BoxGeometry(2, 2, 2);
+            sceneGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(boxGeo), materials.wireframe));
+
+            const corners = [-1, 1];
+
+            if (state.ionicType === 'nacl') {
+                // Cl- (FCC) + Na+ (Octahedral holes)
+                const rCl = isFill ? 0.58 : 0.25;
+                const rNa = isFill ? 0.32 : 0.16;
+
+                // Cl- at corners & faces
+                corners.forEach(x => corners.forEach(y => corners.forEach(z => {
+                    sceneGroup.add(createSphere(x, y, z, rCl, materials.ionCl));
+                })));
+                [[0,0,1], [0,0,-1], [0,1,0], [0,-1,0], [1,0,0], [-1,0,0]].forEach(p => {
+                    sceneGroup.add(createSphere(p[0], p[1], p[2], rCl, materials.ionCl));
+                });
+
+                // Na+ at center and 12 edges
+                sceneGroup.add(createSphere(0, 0, 0, rNa, materials.ionNa));
+                const edges = [
+                    [1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0],
+                    [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1],
+                    [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1]
+                ];
+                edges.forEach(p => sceneGroup.add(createSphere(p[0], p[1], p[2], rNa, materials.ionNa)));
+
+            } else if (state.ionicType === 'cscl') {
+                // Cs+ in center of simple cubic Cl-
+                const rCl = isFill ? 0.65 : 0.26;
+                const rCs = isFill ? 0.60 : 0.24;
+
+                corners.forEach(x => corners.forEach(y => corners.forEach(z => {
+                    sceneGroup.add(createSphere(x, y, z, rCl, materials.ionCl));
+                })));
+                sceneGroup.add(createSphere(0, 0, 0, rCs, materials.ionCs));
+
+            } else if (state.ionicType === 'zns') {
+                // S2- (FCC) + Zn2+ in 4 tetrahedral holes
+                const rS = isFill ? 0.56 : 0.25;
+                const rZn = isFill ? 0.28 : 0.16;
+
+                corners.forEach(x => corners.forEach(y => corners.forEach(z => {
+                    sceneGroup.add(createSphere(x, y, z, rS, materials.ionS));
+                })));
+                [[0,0,1], [0,0,-1], [0,1,0], [0,-1,0], [1,0,0], [-1,0,0]].forEach(p => {
+                    sceneGroup.add(createSphere(p[0], p[1], p[2], rS, materials.ionS));
+                });
+
+                // 4 Tetrahedral holes (alternating subcubes)
+                const tHoles = [
+                    [0.5, 0.5, 0.5],
+                    [-0.5, -0.5, 0.5],
+                    [-0.5, 0.5, -0.5],
+                    [0.5, -0.5, -0.5]
+                ];
+                tHoles.forEach(p => sceneGroup.add(createSphere(p[0], p[1], p[2], rZn, materials.ionZn)));
+
+            } else if (state.ionicType === 'caf2') {
+                // Ca2+ (FCC) + F- in ALL 8 tetrahedral holes
+                const rCa = isFill ? 0.52 : 0.25;
+                const rF = isFill ? 0.30 : 0.16;
+
+                corners.forEach(x => corners.forEach(y => corners.forEach(z => {
+                    sceneGroup.add(createSphere(x, y, z, rCa, materials.ionCa));
+                })));
+                [[0,0,1], [0,0,-1], [0,1,0], [0,-1,0], [1,0,0], [-1,0,0]].forEach(p => {
+                    sceneGroup.add(createSphere(p[0], p[1], p[2], rCa, materials.ionCa));
+                });
+
+                // All 8 tetrahedral holes
+                for (let x of [-0.5, 0.5]) {
+                    for (let y of [-0.5, 0.5]) {
+                        for (let z of [-0.5, 0.5]) {
+                            sceneGroup.add(createSphere(x, y, z, rF, materials.ionF));
+                        }
+                    }
+                }
+            }
+            updateUIInfo();
+        }
+
+        // ================= UPDATE UI & DESCRIPTIONS =================
+        function updateUIInfo() {
+            const statName = document.getElementById('statName');
+            const statType = document.getElementById('statType');
+            const statCN = document.getElementById('statCN');
+            const statPE = document.getElementById('statPE');
+            const statHoles = document.getElementById('statHoles');
+            const explainBox = document.getElementById('explainBox');
+            const legendContainer = document.getElementById('legendContainer');
+            legendContainer.innerHTML = '';
+
+            function addLegend(color, name) {
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                item.innerHTML = `<span class="color-dot" style="background:${color}; color:${color}"></span><span>${name}</span>`;
+                legendContainer.appendChild(item);
+            }
+
+            if (state.currentTab === 'pingpong') {
+                if (state.pingpongCluster === 'single') {
+                    if (state.singleLayerType === 'closest') {
+                        statName.textContent = '1 Layer: Closest Packing';
+                        statType.textContent = 'การจัดเรียงชิดที่สุด 2 มิติ (หกเหลี่ยม)';
+                        statCN.textContent = '6 (ล้อมรอบ 6 ลูกในระนาบ)';
+                        statPE.textContent = '60.48% (คำนวณจากแท่งสี่เหลี่ยม ABCD)';
+                        statHoles.textContent = 'ช่องสามเหลี่ยมหงาย (a) และคว่ำ (b)';
+                        explainBox.innerHTML = `
+                            <b>การจัดเรียงชั้นเดียวแบบ Closest Packing:</b><br>
+                            ลูกปิงปองแถวถัดไปจะวางสับหว่างกับแถวแรก ทำให้เกิดความหนาแน่นสูงสุดใน 2 มิติ 
+                            เกิดช่องว่างสามเหลี่ยม 2 ทิศทางคือช่องหงาย (a) และช่องคว่ำ (b)<br>
+                            • ปริมาตรทรงกลม 1 ลูกในกล่อง ABCD = \\(\\frac{4}{3}\\pi r^3\\)<br>
+                            • ปริมาตรแท่ง ABCD = \\(2r \\times \\sqrt{3}r \\times 2r = 4\\sqrt{3}r^3\\)<br>
+                            • <b>Packing Efficiency = 60.48%</b>, ช่องว่าง = 39.52%
+                        `;
+                        addLegend('#38bdf8', 'ลูกปิงปองชั้นเดียว (A)');
+                        addLegend('#ef4444', 'กรอบหน่วยเซลล์ ABCD');
+                    } else {
+                        statName.textContent = '1 Layer: Simple Cubic';
+                        statType.textContent = 'การจัดเรียงแบบลูกบาศก์อย่างง่าย 2 มิติ';
+                        statCN.textContent = '4 (ล้อมรอบ 4 ลูกในระนาบ)';
+                        statPE.textContent = '52.38% (หลวมกว่า Closest)';
+                        statHoles.textContent = 'ช่องสี่เหลี่ยมระหว่าง 4 ลูก';
+                        explainBox.innerHTML = `
+                            <b>การจัดเรียงชั้นเดียวแบบ Simple Cubic:</b><br>
+                            ลูกปิงปองแถวถัดไปวางเรียงให้ตรงกับแถวแรกพอดี (ไม่สับหว่าง) 
+                            ทำให้เกิดช่องว่างขนาดใหญ่รูปสี่เหลี่ยมระหว่างลูกปิงปอง 4 ลูก<br>
+                            • ปริมาตรแท่งสี่เหลี่ยม ABCD = \\(2r \\times 2r \\times 2r = 8r^3\\)<br>
+                            • <b>Packing Efficiency = 52.38%</b>, ช่องว่าง = 47.62%
+                        `;
+                        addLegend('#f59e0b', 'ลูกปิงปอง Simple Cubic');
+                        addLegend('#ef4444', 'กรอบหน่วยเซลล์ ABCD');
+                    }
+                } else {
+                    const isHCP = (state.stacking === 'hcp');
+                    statName.textContent = isHCP ? 'HCP (ABAB...)' : 'FCC (ABCABC...)';
+                    statType.textContent = isHCP ? 'Hexagonal Closest Packing' : 'Cubic Closest Packing (Face-Centred)';
+                    statCN.textContent = '12 (6 ในชั้น + 3 ชั้นบน + 3 ชั้นล่าง)';
+                    statPE.textContent = '74.08% (ช่องว่าง 25.92%)';
+                    statHoles.textContent = 'Tetrahedral = 2N, Octahedral = N';
+
+                    if (isHCP) {
+                        explainBox.innerHTML = `
+                            <b>การเรียงแบบ HCP (ABABAB...):</b><br>
+                            1. <b>ชั้นที่ 1 (A):</b> วางลูกปิงปองชิดกัน เกิดหลุม 2 ชุด (B และ C)<br>
+                            2. <b>ชั้นที่ 2 (B):</b> วางลงในหลุม B<br>
+                            3. <b>ชั้นที่ 3 (A):</b> วางลงในหลุมของชั้น B ที่ <b>ตรงกับลูกปิงปองชั้นที่ 1 (A) พอดิบพอดี</b><br>
+                            • <b>ดูมุม Top View:</b> ลูกบอลชั้น 1 และ 3 วางตัวทับกันสนิท! (ตามรูปที่ 16(ก) และ 20 ในแลป)<br>
+                            • <span class="highlight-t">ช่อง Tetrahedral (T):</span> เกิดจากลูกปิงปอง 4 ลูก (3 ล่าง + 1 บน หรือ 1 ล่าง + 3 บน)<br>
+                            • <span class="highlight-o">ช่อง Octahedral (O):</span> เกิดจากลูกปิงปอง 6 ลูก (3 ล่าง + 3 บน สลับทิศทาง)
+                        `;
+                    } else {
+                        explainBox.innerHTML = `
+                            <b>การเรียงแบบ FCC (ABCABC...):</b><br>
+                            1. <b>ชั้นที่ 1 (A):</b> วางลูกปิงปองชิดกัน<br>
+                            2. <b>ชั้นที่ 2 (B):</b> วางลงในหลุม B<br>
+                            3. <b>ชั้นที่ 3 (C):</b> วางลงในหลุมของชั้น B ที่ <b>ตรงกับช่อง Octahedral ของคู่ AB</b> (ตำแหน่ง C ไม่ตรงกับทั้ง A และ B!)<br>
+                            • <b>ดูมุม Top View:</b> ลูกบอล 3 ชั้นวางสลับกัน ไม่มีชั้นไหนทับกันตรงๆ (ยอดสามเหลี่ยมหมุนสลับ 180° ตามรูปที่ 17(ข) และ 21 ในแลป)<br>
+                            • ชั้นที่ 4 ถึงจะตรงกับชั้นที่ 1 (ลำดับจึงเป็น A-B-C-A-B-C...)
+                        `;
+                    }
+
+                    addLegend('#38bdf8', 'ชั้นที่ 1 (A) - ฐานล่าง');
+                    addLegend('#f59e0b', 'ชั้นที่ 2 (B) - ชั้นกลาง');
+                    addLegend(isHCP ? '#38bdf8' : '#10b981', isHCP ? 'ชั้นที่ 3 (A) - ตรงกับชั้น 1' : 'ชั้นที่ 3 (C) - สลับทิศ ไม่ตรงกับชั้น 1');
+                    addLegend('#d946ef', 'ช่องว่าง Tetrahedral (T - 4 ลูก)');
+                    addLegend('#fb923c', 'ช่องว่าง Octahedral (O - 6 ลูก)');
+                }
+
+            } else if (state.currentTab === 'holes') {
+                if (state.holeType === 'tetra') {
+                    statName.textContent = 'Tetrahedral Hole (ช่องเททระฮีดรัล)';
+                    statType.textContent = 'ช่องว่างทรงสี่หน้า (เกิดจากทรงกลม 4 ลูก)';
+                    statCN.textContent = '4 (ไอออนที่เข้ามาจะถูกล้อมรอบด้วย 4 ลูก)';
+                    statPE.textContent = 'รัศมีช่องว่าง r = 0.225 R';
+                    statHoles.textContent = 'อัตราส่วนรัศมี r+/r- = 0.225 - 0.414';
+                    explainBox.innerHTML = `
+                        <b>ช่องเททระฮีดรัล (Tetrahedral Hole):</b><br>
+                        • เกิดจากลูกปิงปอง <b>4 ลูก</b> (3 ลูกเป็นฐานสามเหลี่ยม + 1 ลูกวางปิดยอดข้างบน หรือกลับกัน)<br>
+                        • เส้นเชื่อมจุดศูนย์กลางทั้ง 4 ลูกจะประกอบกันเป็น <b>ทรงสี่หน้าปรกติ (Regular Tetrahedron)</b><br>
+                        • ขนาดช่องว่าง: \\(r_{\\text{void}} = (\\sqrt{1.5} - 1)R \\approx \\mathbf{0.225 R}\\)<br>
+                        • สารตัวอย่าง: \\(\\text{Zn}^{2+}\\) ใน \\(\\text{ZnS}\\) (Zinc Blende) และ \\(\\text{F}^-\\) ใน \\(\\text{CaF}_2\\) (Fluorite)
+                    `;
+                    addLegend('#38bdf8', 'ลูกปิงปองฐาน 3 ลูก');
+                    addLegend('#f59e0b', 'ลูกปิงปองปิดยอด 1 ลูก');
+                    addLegend('#d946ef', 'ช่องว่างทรงสี่หน้า (r = 0.225 R)');
+
+                } else if (state.holeType === 'octa') {
+                    statName.textContent = 'Octahedral Hole (ช่องออกตะฮีดรัล)';
+                    statType.textContent = 'ช่องว่างทรงแปดหน้า (เกิดจากทรงกลม 6 ลูก)';
+                    statCN.textContent = '6 (ไอออนที่เข้ามาจะถูกล้อมรอบด้วย 6 ลูก)';
+                    statPE.textContent = 'รัศมีช่องว่าง r = 0.414 R';
+                    statHoles.textContent = 'อัตราส่วนรัศมี r+/r- = 0.414 - 0.732';
+                    explainBox.innerHTML = `
+                        <b>ช่องออกตะฮีดรัล (Octahedral Hole):</b><br>
+                        • เกิดจากลูกปิงปอง <b>6 ลูก</b> (3 ลูกชั้นล่างทำมุมสามเหลี่ยมหงาย + 3 ลูกชั้นบนทำมุมสามเหลี่ยมคว่ำ)<br>
+                        • เส้นเชื่อมจุดศูนย์กลางทั้ง 6 ลูกจะประกอบกันเป็น <b>ทรงแปดหน้าปรกติ (Regular Octahedron)</b><br>
+                        • ขนาดช่องว่าง: \\(r_{\\text{void}} = (\\sqrt{2} - 1)R \\approx \\mathbf{0.414 R}\\) (ใหญ่กว่าช่อง Tetrahedral เกือบ 2 เท่า!)<br>
+                        • สารตัวอย่าง: \\(\\text{Na}^+\\) ใน \\(\\text{NaCl}\\) (Rock Salt) บรรจุในช่อง Octahedral ทุกช่อง
+                    `;
+                    addLegend('#38bdf8', 'ลูกปิงปองชั้นล่าง 3 ลูก');
+                    addLegend('#f59e0b', 'ลูกปิงปองชั้นบน 3 ลูก (สลับทิศ)');
+                    addLegend('#fb923c', 'ช่องว่างทรงแปดหน้า (r = 0.414 R)');
+
+                } else if (state.holeType === 'cubic') {
+                    statName.textContent = 'Cubic Hole (ช่องลูกบาศก์)';
+                    statType.textContent = 'ช่องว่างลูกบาศก์ (เกิดจากทรงกลม 8 ลูก)';
+                    statCN.textContent = '8 (ไอออนที่เข้ามาจะถูกล้อมรอบด้วย 8 ลูก)';
+                    statPE.textContent = 'รัศมีช่องว่าง r = 0.732 R';
+                    statHoles.textContent = 'อัตราส่วนรัศมี r+/r- > 0.732';
+                    explainBox.innerHTML = `
+                        <b>ช่องลูกบาศก์ (Cubic Hole):</b><br>
+                        • เกิดจากลูกปิงปอง <b>8 ลูก</b> เรียงแบบ Simple Cubic (4 ลูกชั้นล่าง + 4 ลูกชั้นบนตรงกัน)<br>
+                        • จุดศูนย์กลางตรงกลางลูกบาศก์คือช่องว่างทรงลูกบาศก์ขนาดใหญ่ที่สุด<br>
+                        • ขนาดช่องว่าง: \\(r_{\\text{void}} = (\\sqrt{3} - 1)R \\approx \\mathbf{0.732 R}\\)<br>
+                        • สารตัวอย่าง: \\(\\text{Cs}^+\\) ใน \\(\\text{CsCl}\\) มีขนาดใหญ่พอดีกับช่อง Cubic Hole นี้
+                    `;
+                    addLegend('#38bdf8', 'ลูกปิงปองมุมล่าง 4 ลูก');
+                    addLegend('#f59e0b', 'ลูกปิงปองมุมบน 4 ลูก');
+                    addLegend('#f43f5e', 'ช่องว่างทรงลูกบาศก์ (r = 0.732 R)');
+                }
+
+            } else if (state.currentTab === 'unitcells') {
+                if (state.metallicType === 'sc') {
+                    statName.textContent = 'Simple Cubic (SC)';
+                    statType.textContent = 'ลูกบาศก์อย่างง่าย';
+                    statCN.textContent = '6';
+                    statPE.textContent = '52.38% (ช่องว่าง 47.62%)';
+                    statHoles.textContent = 'n = 1 อะตอม (8 × 1/8)';
+                    explainBox.innerHTML = `
+                        <b>Simple Cubic (SC):</b><br>
+                        อะตอมอยู่ที่มุมทั้ง 8 มุมเท่านั้น (คิดเป็น \\(8 \\times 1/8 = 1\\) อะตอมในยูนิตเซลล์)<br>
+                        • ความสัมพันธ์: \\(a = 2r\\)<br>
+                        • จัดเรียงหลวมที่สุด จึงไม่ค่อยพบในโลหะทั่วไป (พบเฉพาะ \\(\\text{Po}\\))
+                    `;
+                    addLegend('#38bdf8', 'อะตอมโลหะที่มุม 8 จุด');
+                } else if (state.metallicType === 'bcc') {
+                    statName.textContent = 'Body-Centred Cubic (BCC)';
+                    statType.textContent = 'ลูกบาศก์กลางตัว';
+                    statCN.textContent = '8';
+                    statPE.textContent = '68.04% (ช่องว่าง 31.96%)';
+                    statHoles.textContent = 'n = 2 อะตอม (8×1/8 + 1 ตรงกลาง)';
+                    explainBox.innerHTML = `
+                        <b>Body-Centred Cubic (BCC):</b><br>
+                        อะตอมอยู่ที่มุม 8 จุด และตรงใจกลางเซลล์ 1 จุด (รวมเป็น 2 อะตอม)<br>
+                        • ความสัมพันธ์ตามแนวเส้นทแยงมุมลูกบาศก์: \\(a\\sqrt{3} = 4r \\implies a = \\frac{4r}{\\sqrt{3}}\\)<br>
+                        • ตัวอย่าง: โลหะอัลคาไล (Li, Na, K, Ba) และ Fe
+                    `;
+                    addLegend('#38bdf8', 'อะตอมที่มุม 8 จุด');
+                    addLegend('#f59e0b', 'อะตอมใจกลางยูนิตเซลล์');
+                    addLegend('#38bdf8', 'เส้นทแยงมุม (Body Diagonal)');
+                } else if (state.metallicType === 'fcc') {
+                    statName.textContent = 'Face-Centred Cubic (FCC)';
+                    statType.textContent = 'ลูกบาศก์กลางหน้า (Closest Packing)';
+                    statCN.textContent = '12';
+                    statPE.textContent = '74.08% (ช่องว่าง 25.92%)';
+                    statHoles.textContent = 'n = 4 อะตอม (8×1/8 + 6×1/2)';
+                    explainBox.innerHTML = `
+                        <b>Face-Centred Cubic (FCC / CCP):</b><br>
+                        อะตอมอยู่ที่มุม 8 จุด และตรงกลางผิวหน้าทั้ง 6 หน้า (รวมเป็น 4 อะตอม)<br>
+                        • ความสัมพันธ์ตามแนวเส้นทแยงมุมผิวหน้า: \\(a\\sqrt{2} = 4r \\implies a = 2\\sqrt{2}r\\)<br>
+                        • ชิดที่สุด (Closest Packing) แข็งแรงและเสถียรที่สุด เช่น Cu, Ag, Au, Pt, Al
+                    `;
+                    addLegend('#38bdf8', 'อะตอมที่มุม 8 จุด');
+                    addLegend('#f59e0b', 'อะตอมที่ผิวหน้า 6 หน้า');
+                    addLegend('#38bdf8', 'เส้นทแยงมุมหน้า (Face Diagonal)');
+                }
+
+            } else if (state.currentTab === 'ionic') {
+                if (state.ionicType === 'nacl') {
+                    statName.textContent = 'Rock Salt (NaCl)';
+                    statType.textContent = 'FCC แอนไอออน + Octahedral แคตไอออน';
+                    statCN.textContent = '6 : 6 (Na+ ล้อมรอบด้วย 6 Cl-, Cl- ล้อมรอบด้วย 6 Na+)';
+                    statPE.textContent = 'n = 4 สูตรหน่วย (4 Na+, 4 Cl-)';
+                    statHoles.textContent = 'บรรจุใน Octahedral holes ครบทุกช่อง';
+                    explainBox.innerHTML = `
+                        <b>โครงสร้าง Rock Salt (NaCl):</b><br>
+                        • \\(\\text{Cl}^-\\) จัดแบบ FCC (มุม 8 + ผิวหน้า 6 = 4 ไอออน)<br>
+                        • \\(\\text{Na}^+\\) แทรกในช่อง <b>Octahedral holes ทุกช่อง</b> (กลางเซลล์ 1 + ขอบ 12 ด้าน \\(\\times 1/4 = 4\\) ไอออน)<br>
+                        • อัตราส่วนรัศมี \\(r_+/r_- = 0.414 - 0.732\\)<br>
+                        • สารตัวอย่าง: NaCl, KCl, CaO, AgCl, MgO
+                    `;
+                    addLegend('#22c55e', 'Cl- (ไอออนลบ - FCC)');
+                    addLegend('#a855f7', 'Na+ (ไอออนบวก - Octahedral Holes)');
+                } else if (state.ionicType === 'cscl') {
+                    statName.textContent = 'Cesium Chloride (CsCl)';
+                    statType.textContent = 'Simple Cubic แอนไอออน + Cubic Hole แคตไอออน';
+                    statCN.textContent = '8 : 8';
+                    statPE.textContent = 'n = 1 สูตรหน่วย (1 Cs+, 1 Cl-)';
+                    statHoles.textContent = 'บรรจุใน Cubic Hole (กึ่งกลางเซลล์)';
+                    explainBox.innerHTML = `
+                        <b>โครงสร้าง Cesium Chloride (CsCl):</b><br>
+                        • \\(\\text{Cl}^-\\) จัดแบบ Simple Cubic (มุม 8 จุด \\(\\times 1/8 = 1\\))<br>
+                        • \\(\\text{Cs}^+\\) อยู่ตรงกลางยูนิตเซลล์พอดี (Cubic hole)<br>
+                        • เนื่องจากไอออนบวกและลบมีขนาดใหญ่ใกล้เคียงกัน อัตราส่วนรัศมี \\(r_+/r_- > 0.732\\)
+                    `;
+                    addLegend('#22c55e', 'Cl- (ไอออนลบ - มุม 8 จุด)');
+                    addLegend('#e11d48', 'Cs+ (ไอออนบวก - กึ่งกลางเซลล์)');
+                } else if (state.ionicType === 'zns') {
+                    statName.textContent = 'Zinc Blende (ZnS)';
+                    statType.textContent = 'FCC แอนไอออน + Tetrahedral Holes 50%';
+                    statCN.textContent = '4 : 4';
+                    statPE.textContent = 'n = 4 สูตรหน่วย (4 Zn2+, 4 S2-)';
+                    statHoles.textContent = 'บรรจุใน Tetrahedral holes สลับช่องเว้นช่อง (4 จาก 8)';
+                    explainBox.innerHTML = `
+                        <b>โครงสร้าง Zinc Blende (ZnS):</b><br>
+                        • \\(\\text{S}^{2-}\\) จัดแบบ FCC (4 ไอออน)<br>
+                        • \\(\\text{Zn}^{2+}\\) แทรกในช่อง <b>Tetrahedral holes แบบสลับช่องเว้นช่อง</b> (4 จากทั้งหมด 8 ช่อง)<br>
+                        • อัตราส่วนรัศมี \\(r_+/r_- = 0.225 - 0.414\\) (ถ้าเป็น HCP จะเรียกว่า Wurtzite)
+                    `;
+                    addLegend('#eab308', 'S2- (ไอออนลบ - FCC)');
+                    addLegend('#06b6d4', 'Zn2+ (ไอออนบวก - Tetrahedral ครึ่งเดียว)');
+                } else if (state.ionicType === 'caf2') {
+                    statName.textContent = 'Fluorite (CaF₂)';
+                    statType.textContent = 'FCC แคตไอออน + Tetrahedral Holes 100% แอนไอออน';
+                    statCN.textContent = '8 : 4 (Ca2+ ล้อมรอบด้วย 8 F-, F- ล้อมรอบด้วย 4 Ca2+)';
+                    statPE.textContent = 'n = 4 สูตรหน่วย (4 Ca2+, 8 F-)';
+                    statHoles.textContent = 'บรรจุใน Tetrahedral holes ครบทั้ง 8 ช่อง';
+                    explainBox.innerHTML = `
+                        <b>โครงสร้าง Fluorite (CaF₂):</b><br>
+                        • \\(\\text{Ca}^{2+}\\) จัดแบบ FCC (4 ไอออน)<br>
+                        • \\(\\text{F}^-\\) แทรกในช่อง <b>Tetrahedral holes ครบทั้ง 8 ช่อง</b><br>
+                        • อัตราส่วนจำนวน \\(\\text{Ca}^{2+} : \\text{F}^- = 4 : 8 = 1 : 2\\) พอดีกับสูตร \\(\\text{CaF}_2\\)
+                    `;
+                    addLegend('#6366f1', 'Ca2+ (แคตไอออน - FCC)');
+                    addLegend('#14b8a6', 'F- (แอนไอออน - Tetrahedral ครบ 8 ช่อง)');
+                }
+            }
+        }
+
+        // ================= EVENT LISTENERS =================
+
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.currentTab = btn.getAttribute('data-tab');
+
+                document.querySelectorAll('.panel-section').forEach(p => p.style.display = 'none');
+                document.getElementById('panel-' + state.currentTab).style.display = 'block';
+
+                const badgeText = document.getElementById('badgeText');
+                if (state.currentTab === 'pingpong') {
+                    badgeText.textContent = 'โหมด: เรียงลูกปิงปอง 3 ชั้น (AB vs ABC)';
+                    renderPingPongPacking();
+                } else if (state.currentTab === 'holes') {
+                    badgeText.textContent = 'โหมด: เจาะลึกชนิดช่องว่าง (Isolated Void Explorer)';
+                    renderIsolatedHoles();
+                } else if (state.currentTab === 'unitcells') {
+                    badgeText.textContent = 'โหมด: ยูนิตเซลล์โลหะ (Metallic Unit Cells)';
+                    renderMetallicCell();
+                } else if (state.currentTab === 'ionic') {
+                    badgeText.textContent = 'โหมด: สารประกอบไอออนิก (Ionic Compounds)';
+                    renderIonicCrystal();
+                }
+            });
         });
 
-        document.getElementById('toggleRadiusBtn').addEventListener('click', () => {
-            isExpanded = !isExpanded;
-            renderStructure(document.getElementById('structureSelect').value);
+        // Stacking Toggle: HCP vs FCC
+        document.getElementById('btnHCP').addEventListener('click', () => {
+            state.stacking = 'hcp';
+            document.getElementById('btnHCP').classList.add('btn-toggle-active');
+            document.getElementById('btnFCC').classList.remove('btn-toggle-active');
+            document.getElementById('labelLayer3').textContent = '● ชั้นที่ 3 (A - ทับชั้น 1 พอดี)';
+            document.getElementById('labelLayer3').style.color = '#38bdf8';
+            renderPingPongPacking();
         });
 
+        document.getElementById('btnFCC').addEventListener('click', () => {
+            state.stacking = 'fcc';
+            document.getElementById('btnFCC').classList.add('btn-toggle-active');
+            document.getElementById('btnHCP').classList.remove('btn-toggle-active');
+            document.getElementById('labelLayer3').textContent = '● ชั้นที่ 3 (C - สลับทิศ ไม่ทับชั้น 1)';
+            document.getElementById('labelLayer3').style.color = '#10b981';
+            renderPingPongPacking();
+        });
+
+        // Cluster Type Select
+        document.getElementById('pingpongClusterSelect').addEventListener('change', (e) => {
+            state.pingpongCluster = e.target.value;
+            const isSingle = (state.pingpongCluster === 'single');
+            document.getElementById('layerControlsGroup').style.display = isSingle ? 'none' : 'flex';
+            document.getElementById('holesToggleGroup').style.display = isSingle ? 'none' : 'flex';
+            document.getElementById('singleLayerGroup').style.display = isSingle ? 'flex' : 'none';
+            renderPingPongPacking();
+        });
+
+        // Single Layer Type Buttons
+        document.getElementById('btn1Closest').addEventListener('click', () => {
+            state.singleLayerType = 'closest';
+            document.getElementById('btn1Closest').classList.add('btn-toggle-active');
+            document.getElementById('btn1Simple').classList.remove('btn-toggle-active');
+            renderSingleLayer();
+        });
+
+        document.getElementById('btn1Simple').addEventListener('click', () => {
+            state.singleLayerType = 'simple';
+            document.getElementById('btn1Simple').classList.add('btn-toggle-active');
+            document.getElementById('btn1Closest').classList.remove('btn-toggle-active');
+            renderSingleLayer();
+        });
+
+        // Layer Toggles
+        document.getElementById('chkLayerA').addEventListener('change', e => { state.layerA = e.target.checked; renderPingPongPacking(); });
+        document.getElementById('chkLayerB').addEventListener('change', e => { state.layerB = e.target.checked; renderPingPongPacking(); });
+        document.getElementById('chkLayerC').addEventListener('change', e => { state.layerC = e.target.checked; renderPingPongPacking(); });
+
+        // Layer Spacing Slider
+        document.getElementById('sliderLayerSpacing').addEventListener('input', e => {
+            const val = parseInt(e.target.value);
+            state.layerSpacing = val / 100.0;
+            document.getElementById('valLayerSpacing').textContent = val + '%';
+            renderPingPongPacking();
+        });
+
+        // Holes Toggles
+        document.getElementById('chkShowTHoles').addEventListener('change', e => { state.showTHoles = e.target.checked; renderPingPongPacking(); });
+        document.getElementById('chkShowOHoles').addEventListener('change', e => { state.showOHoles = e.target.checked; renderPingPongPacking(); });
+
+        // Holes Explorer Select & Controls
+        document.getElementById('holeTypeSelect').addEventListener('change', e => {
+            state.holeType = e.target.value;
+            renderIsolatedHoles();
+        });
+
+        document.getElementById('sliderHoleExplode').addEventListener('input', e => {
+            const val = parseInt(e.target.value);
+            state.holeExplode = val / 100.0;
+            document.getElementById('valHoleExplode').textContent = val + '%';
+            renderIsolatedHoles();
+        });
+
+        document.getElementById('chkHolePolyhedron').addEventListener('change', e => {
+            state.showHolePolyhedron = e.target.checked;
+            renderIsolatedHoles();
+        });
+
+        document.getElementById('chkHoleCentralSphere').addEventListener('change', e => {
+            state.showHoleCentralSphere = e.target.checked;
+            renderIsolatedHoles();
+        });
+
+        // Metallic Cell Select & Controls
+        document.getElementById('metallicSelect').addEventListener('change', e => {
+            state.metallicType = e.target.value;
+            renderMetallicCell();
+        });
+
+        document.getElementById('btnCellBallStick').addEventListener('click', () => {
+            state.metallicStyle = 'stick';
+            document.getElementById('btnCellBallStick').classList.add('btn-toggle-active');
+            document.getElementById('btnCellSpaceFill').classList.remove('btn-toggle-active');
+            renderMetallicCell();
+        });
+
+        document.getElementById('btnCellSpaceFill').addEventListener('click', () => {
+            state.metallicStyle = 'fill';
+            document.getElementById('btnCellSpaceFill').classList.add('btn-toggle-active');
+            document.getElementById('btnCellBallStick').classList.remove('btn-toggle-active');
+            renderMetallicCell();
+        });
+
+        document.getElementById('chkShowUnitCellBox').addEventListener('change', e => {
+            state.showCellBox = e.target.checked;
+            renderMetallicCell();
+        });
+
+        // Ionic Select & Controls
+        document.getElementById('ionicSelect').addEventListener('change', e => {
+            state.ionicType = e.target.value;
+            renderIonicCrystal();
+        });
+
+        document.getElementById('btnIonicBallStick').addEventListener('click', () => {
+            state.ionicStyle = 'stick';
+            document.getElementById('btnIonicBallStick').classList.add('btn-toggle-active');
+            document.getElementById('btnIonicSpaceFill').classList.remove('btn-toggle-active');
+            renderIonicCrystal();
+        });
+
+        document.getElementById('btnIonicSpaceFill').addEventListener('click', () => {
+            state.ionicStyle = 'fill';
+            document.getElementById('btnIonicSpaceFill').classList.add('btn-toggle-active');
+            document.getElementById('btnIonicBallStick').classList.remove('btn-toggle-active');
+            renderIonicCrystal();
+        });
+
+        // ================= CAMERA PRESET CONTROLS =================
+        function setActiveViewBtn(btnId) {
+            document.querySelectorAll('#viewport-controls .view-btn').forEach(b => {
+                if (b.id !== 'btnAutoRotate') b.classList.remove('active');
+            });
+            if (btnId) document.getElementById(btnId).classList.add('active');
+        }
+
+        document.getElementById('btnViewTop').addEventListener('click', () => {
+            setActiveViewBtn('btnViewTop');
+            camera.position.set(0, 18, 0.001);
+            camera.lookAt(0, 0, 0);
+            if (controls) controls.target.set(0, 0, 0);
+        });
+
+        document.getElementById('btnViewSide').addEventListener('click', () => {
+            setActiveViewBtn('btnViewSide');
+            camera.position.set(0, 0.5, 18);
+            camera.lookAt(0, 0, 0);
+            if (controls) controls.target.set(0, 0, 0);
+        });
+
+        document.getElementById('btnView3D').addEventListener('click', () => {
+            setActiveViewBtn('btnView3D');
+            camera.position.set(10, 12, 14);
+            camera.lookAt(0, 0, 0);
+            if (controls) controls.target.set(0, 0, 0);
+        });
+
+        document.getElementById('btnResetView').addEventListener('click', () => {
+            setActiveViewBtn('btnView3D');
+            camera.position.set(0, 10, 16);
+            camera.lookAt(0, 0, 0);
+            sceneGroup.rotation.set(0, 0, 0);
+            if (controls) {
+                controls.reset();
+                controls.target.set(0, 0, 0);
+            }
+        });
+
+        const btnAutoRotate = document.getElementById('btnAutoRotate');
+        btnAutoRotate.addEventListener('click', () => {
+            state.autoRotate = !state.autoRotate;
+            if (state.autoRotate) {
+                btnAutoRotate.classList.add('active');
+            } else {
+                btnAutoRotate.classList.remove('active');
+            }
+        });
+
+        // Cheat Sheet Modal Listeners
+        const modal = document.getElementById('cheatSheetModal');
+        document.getElementById('btnOpenCheatSheet').addEventListener('click', () => modal.style.display = 'flex');
+        document.getElementById('btnCloseCheatSheet').addEventListener('click', () => modal.style.display = 'none');
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.style.display = 'none';
+        });
+
+        // Resize Handler
         window.addEventListener('resize', () => {
             camera.aspect = container.clientWidth / container.clientHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(container.clientWidth, container.clientHeight);
         });
 
+        // ================= ANIMATION LOOP =================
         function animate() {
             requestAnimationFrame(animate);
-            controls.update();
+            if (state.autoRotate) {
+                sceneGroup.rotation.y += 0.006;
+            }
+            if (controls) controls.update();
             renderer.render(scene, camera);
         }
 
-        // เริ่มต้นแสดง FCC
-        renderStructure('fcc');
+        // Initialize with Ping-Pong Packing
+        renderPingPongPacking();
         animate();
     </script>
 </body>
